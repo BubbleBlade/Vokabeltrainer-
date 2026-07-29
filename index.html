@@ -83,8 +83,6 @@
     const Trash2 = (props) => <Icon name="trash-2" {...props} />;
     const ArrowRightLeft = (props) => <Icon name="arrow-right-left" {...props} />;
     const BookOpen = (props) => <Icon name="book-open" {...props} />;
-    const Gamepad2 = (props) => <Icon name="gamepad-2" {...props} />;
-    const GraduationCap = (props) => <Icon name="graduation-cap" {...props} />;
     const ClipboardCopy = (props) => <Icon name="clipboard-copy" {...props} />;
     const ClipboardPaste = (props) => <Icon name="clipboard-paste" {...props} />;
     const FileUp = (props) => <Icon name="file-up" {...props} />;
@@ -93,13 +91,11 @@
     const ChevronDown = (props) => <Icon name="chevron-down" {...props} />;
     const Settings = (props) => <Icon name="settings" {...props} />;
     const Layers = (props) => <Icon name="layers" {...props} />;
-    const Timer = (props) => <Icon name="timer" {...props} />;
-    const Target = (props) => <Icon name="target" {...props} />;
-    const RotateCcw = (props) => <Icon name="rotate-ccw" {...props} />;
     const Pencil = (props) => <Icon name="pencil" {...props} />;
     const Search = (props) => <Icon name="search" {...props} />;
     const Sparkles = (props) => <Icon name="sparkles" {...props} />;
     const ListChecks = (props) => <Icon name="list-checks" {...props} />;
+    const Play = (props) => <Icon name="play" {...props} />;
 
     /* ------------------------------------------------------------------ */
     /* Design tokens – ruhige, augenschonende Waldgrün-Palette            */
@@ -167,7 +163,6 @@
     function parseImportText(text) {
       if (!text || !text.trim()) return [];
       
-      // 1. Check: Block-Format mit BEGRIFF: / DEFINITION:
       if (/BEGRIFF:/i.test(text)) {
         const blocks = text.split(/\n?-{3,}\n?/).map((b) => b.trim()).filter(Boolean);
         const results = [];
@@ -199,12 +194,10 @@
         if (results.length > 0) return results;
       }
 
-      // 2. CSV / Zeilenbasiertes Format (z.B. Begriff;Definition oder Begriff,Definition oder Tab-getrennt)
       const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
       const results = [];
 
       for (const line of lines) {
-        // Ignoriere typische Header-Zeilen
         if (/^(begriff|term|word|vokabel)[;,\t]/i.test(line)) continue;
 
         let parts = [];
@@ -310,7 +303,7 @@
     }
 
     /* ------------------------------------------------------------------ */
-    /* Box-Illustration (Signature-Element)                               */
+    /* Box-Illustration                                                   */
     /* ------------------------------------------------------------------ */
     function DrawerBox({ index, count, onClick, active }) {
       const color = C.box[index];
@@ -319,13 +312,12 @@
       return (
         <button
           onClick={onClick}
-          disabled={count === 0}
           style={{
-            textAlign: "left", cursor: count === 0 ? "default" : "pointer", border: `1px solid ${active ? color : C.border}`,
+            textAlign: "left", cursor: "pointer", border: `2px solid ${active ? color : C.border}`,
             background: active ? soft : C.surface, borderRadius: 14, padding: 16, flex: "1 1 200px", minWidth: 160,
-            transition: "all .18s ease", position: "relative", overflow: "hidden",
+            transition: "all .18s ease", position: "relative", overflow: "hidden", outline: "none"
           }}
-          onMouseEnter={(e) => { if (count > 0) e.currentTarget.style.borderColor = color; }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = color; }}
           onMouseLeave={(e) => { if (!active) e.currentTarget.style.borderColor = C.border; }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -642,16 +634,46 @@
     }
 
     /* ------------------------------------------------------------------ */
-    /* Lernen (4-Boxen Leitner)                                           */
+    /* Lernen (Flexibel nach Box & Anzahl mit Auffüll-Funktion)           */
     /* ------------------------------------------------------------------ */
     function LearnView({ vocab, onSetBox }) {
       const counts = [1, 2, 3, 4].map((n) => vocab.filter((v) => v.box === n).length);
+      const [selectedBox, setSelectedBox] = useState(1);
+      const [countChoice, setCountChoice] = useState("all"); // "5", "10", "20", "50", "all"
       const [session, setSession] = useState(null);
 
-      function startSession(boxNum) {
-        const cards = shuffle(vocab.filter((v) => v.box === boxNum));
-        setSession({ boxNum, queue: cards, index: 0, revealed: false, correct: 0, wrong: 0 });
+      function startSession() {
+        const primaryCards = shuffle(vocab.filter((v) => v.box === selectedBox));
+        let finalCards = [];
+
+        if (countChoice === "all") {
+          finalCards = primaryCards;
+        } else {
+          const targetCount = parseInt(countChoice, 10);
+          if (primaryCards.length >= targetCount) {
+            finalCards = primaryCards.slice(0, targetCount);
+          } else {
+            // Mit Karten aus anderen Boxen auffüllen
+            const otherCards = shuffle(vocab.filter((v) => v.box !== selectedBox));
+            const needed = targetCount - primaryCards.length;
+            finalCards = [...primaryCards, ...otherCards.slice(0, needed)];
+          }
+        }
+
+        if (finalCards.length === 0) return;
+
+        setSession({
+          boxNum: selectedBox,
+          queue: finalCards,
+          index: 0,
+          revealed: false,
+          correct: 0,
+          wrong: 0,
+          total: finalCards.length,
+          filledFromOther: finalCards.length > primaryCards.length && countChoice !== "all"
+        });
       }
+
       function answer(know) {
         const card = session.queue[session.index];
         onSetBox(card.id, know ? Math.min(card.box + 1, 4) : 1);
@@ -666,7 +688,10 @@
         return (
           <div style={{ maxWidth: 560, margin: "0 auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <span style={{ color: C.textMuted, fontSize: 13 }}>Box {session.boxNum} · Karte {session.index + 1} / {session.queue.length}</span>
+              <span style={{ color: C.textMuted, fontSize: 13 }}>
+                Fokus: Box {session.boxNum} · Karte {session.index + 1} / {session.queue.length}
+                {card.box !== session.boxNum && <span style={{ color: C.amber, marginLeft: 8 }}>(aus Box {card.box} aufgefüllt)</span>}
+              </span>
               <Button size="sm" variant="ghost" onClick={() => setSession(null)}>Abbrechen</Button>
             </div>
             <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: 32, minHeight: 220, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
@@ -688,241 +713,83 @@
           </div>
         );
       }
+
       if (session && session.index >= session.queue.length) {
         return (
           <div style={{ maxWidth: 480, margin: "40px auto", textAlign: "center" }}>
             <Sparkles size={36} color={C.amber} style={{ marginBottom: 10 }} />
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, color: C.text }}>Box {session.boxNum} geschafft!</div>
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, color: C.text }}>Einheit geschafft!</div>
             <div style={{ color: C.textMuted, marginTop: 6 }}>{session.correct} gewusst · {session.wrong} wiederholt</div>
             <Button variant="accent" style={{ marginTop: 20 }} onClick={() => setSession(null)}>Zurück zur Übersicht</Button>
           </div>
         );
       }
 
+      const availableInSelected = counts[selectedBox - 1];
+      const totalVocab = vocab.length;
+
       return (
         <div>
-          <div style={{ color: C.textMuted, fontSize: 14, marginBottom: 14 }}>
-            Wähle eine Box zum Üben. Richtig beantwortet wandert die Karte eine Box weiter, falsch beantwortet zurück in Box 1.
+          <div style={{ color: C.textMuted, fontSize: 14, marginBottom: 16 }}>
+            1. Wähle die gewünschte Haupt-Box zum Üben aus.
           </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            {counts.map((c, i) => <DrawerBox key={i} index={i} count={c} onClick={() => startSession(i + 1)} />)}
+
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+            {counts.map((c, i) => (
+              <DrawerBox
+                key={i}
+                index={i}
+                count={c}
+                active={selectedBox === i + 1}
+                onClick={() => setSelectedBox(i + 1)}
+              />
+            ))}
           </div>
-        </div>
-      );
-    }
 
-    /* ------------------------------------------------------------------ */
-    /* Experten-Modus                                                     */
-    /* ------------------------------------------------------------------ */
-    function ExpertView({ vocab, onSetBox }) {
-      const [session, setSession] = useState(null);
-      const inputRef = useRef(null);
-
-      function start() {
-        setSession({ queue: shuffle(vocab), index: 0, input: "", feedback: null, correct: 0, wrong: 0 });
-      }
-      function check() {
-        const card = session.queue[session.index];
-        const ok = session.input.trim().toLowerCase() === card.term.trim().toLowerCase();
-        onSetBox(card.id, ok ? Math.min(card.box + 1, 4) : 1);
-        setSession((s) => ({ ...s, feedback: ok ? "correct" : "wrong", correct: s.correct + (ok ? 1 : 0), wrong: s.wrong + (ok ? 0 : 1) }));
-      }
-      function next() {
-        setSession((s) => ({ ...s, index: s.index + 1, input: "", feedback: null }));
-        setTimeout(() => inputRef.current && inputRef.current.focus(), 30);
-      }
-
-      useEffect(() => { if (session && !session.feedback) inputRef.current && inputRef.current.focus(); }, [session?.index, session?.feedback]);
-
-      if (!session) {
-        return (
-          <div style={{ maxWidth: 480, margin: "40px auto", textAlign: "center" }}>
-            <GraduationCap size={34} color={C.accent} style={{ marginBottom: 10 }} />
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, color: C.text }}>Experten-Modus</div>
-            <div style={{ color: C.textMuted, marginTop: 8, lineHeight: 1.5 }}>Du siehst die Definition und tippst den passenden Begriff. So prägst du dir die Schreibweise wirklich ein.</div>
-            <Button variant="accent" style={{ marginTop: 20 }} disabled={vocab.length === 0} onClick={start}>Starten ({vocab.length} Vokabeln)</Button>
-            {vocab.length === 0 && <div style={{ color: C.textFaint, fontSize: 12.5, marginTop: 8 }}>Lege zuerst Vokabeln in der Liste an.</div>}
-          </div>
-        );
-      }
-      if (session.index >= session.queue.length) {
-        return (
-          <div style={{ maxWidth: 480, margin: "40px auto", textAlign: "center" }}>
-            <Sparkles size={36} color={C.amber} style={{ marginBottom: 10 }} />
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, color: C.text }}>Runde beendet</div>
-            <div style={{ color: C.textMuted, marginTop: 6 }}>{session.correct} richtig · {session.wrong} falsch</div>
-            <Button variant="accent" style={{ marginTop: 20 }} onClick={start}><RotateCcw size={16} /> Nochmal</Button>
-          </div>
-        );
-      }
-      const card = session.queue[session.index];
-      return (
-        <div style={{ maxWidth: 520, margin: "0 auto" }}>
-          <div style={{ color: C.textMuted, fontSize: 13, marginBottom: 12, display: "flex", justifyContent: "space-between" }}>
-            <span>Karte {session.index + 1} / {session.queue.length}</span>
-            <span>{session.correct} richtig · {session.wrong} falsch</span>
-          </div>
-          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: 28 }}>
-            <div style={{ color: C.textFaint, fontSize: 12.5, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Definition</div>
-            <div style={{ color: C.text, fontSize: 18, whiteSpace: "pre-wrap", lineHeight: 1.5, marginBottom: 20 }}>{card.definition}</div>
-            <TextInput
-              ref={inputRef}
-              disabled={!!session.feedback}
-              placeholder="Begriff eingeben …"
-              value={session.input}
-              onChange={(e) => setSession((s) => ({ ...s, input: e.target.value }))}
-              onKeyDown={(e) => { if (e.key === "Enter") { session.feedback ? next() : check(); } }}
-            />
-            {session.feedback && (
-              <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: session.feedback === "correct" ? C.accentSoft : C.dangerSoft, color: session.feedback === "correct" ? C.accent : C.danger, fontSize: 14 }}>
-                {session.feedback === "correct" ? "Richtig! ✓" : <>Richtig wäre: <strong>{card.term}</strong></>}
-              </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-              {!session.feedback ? <Button variant="accent" onClick={check}>Prüfen</Button> : <Button variant="accent" onClick={next}>Weiter →</Button>}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* Spiel-Modus (gegen die Zeit)                                       */
-    /* ------------------------------------------------------------------ */
-    function GameView({ vocab }) {
-      const [phase, setPhase] = useState("setup");
-      const [duration, setDuration] = useState(60);
-      const [goal, setGoal] = useState(15);
-      const [timeLeft, setTimeLeft] = useState(60);
-      const [score, setScore] = useState(0);
-      const [wrong, setWrong] = useState(0);
-      const [current, setCurrent] = useState(null);
-      const [input, setInput] = useState("");
-      const [flash, setFlash] = useState(null);
-      const inputRef = useRef(null);
-
-      useEffect(() => {
-        if (phase !== "playing") return;
-        const iv = setInterval(() => {
-          setTimeLeft((t) => {
-            if (t <= 1) { clearInterval(iv); setPhase("timeup"); return 0; }
-            return t - 1;
-          });
-        }, 1000);
-        return () => clearInterval(iv);
-      }, [phase]);
-
-      function pickNext(lastId) {
-        if (vocab.length === 1) return vocab[0];
-        let q;
-        do { q = vocab[Math.floor(Math.random() * vocab.length)]; } while (q.id === lastId);
-        return q;
-      }
-      function start() {
-        setScore(0); setWrong(0); setTimeLeft(duration); setInput(""); setFlash(null);
-        setCurrent(pickNext(null));
-        setPhase("playing");
-        setTimeout(() => inputRef.current && inputRef.current.focus(), 30);
-      }
-      function submit() {
-        if (!input.trim()) return;
-        const ok = input.trim().toLowerCase() === current.term.trim().toLowerCase();
-        setFlash(ok ? "ok" : "no");
-        setTimeout(() => setFlash(null), 350);
-        if (ok) {
-          const newScore = score + 1;
-          setScore(newScore);
-          if (newScore >= goal) { setPhase("won"); return; }
-        } else {
-          setWrong((w) => w + 1);
-        }
-        setInput("");
-        setCurrent(pickNext(current.id));
-        inputRef.current && inputRef.current.focus();
-      }
-
-      const progressPct = Math.min(100, Math.round((score / goal) * 100));
-      const timePct = Math.round((timeLeft / duration) * 100);
-
-      if (phase === "setup") {
-        return (
-          <div style={{ maxWidth: 480, margin: "20px auto", textAlign: "center" }}>
-            <Gamepad2 size={34} color={C.amber} style={{ marginBottom: 10 }} />
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, color: C.text }}>Spiel-Modus</div>
-            <div style={{ color: C.textMuted, marginTop: 8, lineHeight: 1.5 }}>Tippe so viele Begriffe wie möglich richtig ein, bevor die Zeit abläuft – und erreiche dein Ziel.</div>
-
-            <div style={{ marginTop: 24, textAlign: "left" }}>
-              <div style={{ color: C.textFaint, fontSize: 12.5, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Zeit</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {[30, 60, 90].map((d) => (
-                  <Button key={d} variant={duration === d ? "accent" : "default"} onClick={() => setDuration(d)} style={{ flex: 1 }}>{d}s</Button>
-                ))}
-              </div>
-              <div style={{ color: C.textFaint, fontSize: 12.5, margin: "16px 0 6px", textTransform: "uppercase", letterSpacing: 0.5 }}>Ziel (richtige Antworten)</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {[10, 15, 25].map((g) => (
-                  <Button key={g} variant={goal === g ? "amber" : "default"} onClick={() => setGoal(g)} style={{ flex: 1 }}>{g}</Button>
-                ))}
-              </div>
+          {/* Konfiguration für die Lern-Session */}
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20, maxWidth: 520, margin: "0 auto" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 12 }}>
+              2. Wie viele Wörter möchtest du üben?
             </div>
 
-            <Button variant="accent" size="lg" style={{ marginTop: 26 }} disabled={vocab.length === 0} onClick={start}>
-              <Timer size={17} /> Spiel starten
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+              {["5", "10", "20", "50", "all"].map((val) => {
+                const label = val === "all" ? "Alle aus Box" : `${val} Wörter`;
+                return (
+                  <Button
+                    key={val}
+                    size="sm"
+                    variant={countChoice === val ? "accent" : "default"}
+                    onClick={() => setCountChoice(val)}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
+            </div>
+
+            {/* Info-Hinweis bezüglich Auffüllung */}
+            <div style={{ fontSize: 13, color: C.textMuted, background: C.bgSoft, padding: "10px 12px", borderRadius: 10, marginBottom: 16, lineHeight: 1.4 }}>
+              {countChoice === "all" ? (
+                <>Es werden alle <strong>{availableInSelected}</strong> Wörter aus Box {selectedBox} abgefragt.</>
+              ) : parseInt(countChoice, 10) <= availableInSelected ? (
+                <>Es werden <strong>{countChoice}</strong> von <strong>{availableInSelected}</strong> Wörtern aus Box {selectedBox} abgefragt.</>
+              ) : (
+                <>
+                  Box {selectedBox} enthält nur {availableInSelected} Wörter. Das System ergänzt automatisch <strong>{parseInt(countChoice, 10) - availableInSelected}</strong> weitere Wörter aus den anderen Boxen (insgesamt {Math.min(parseInt(countChoice, 10), totalVocab)}).
+                </>
+              )}
+            </div>
+
+            <Button
+              variant="accent"
+              size="lg"
+              disabled={totalVocab === 0 || (countChoice === "all" && availableInSelected === 0)}
+              onClick={startSession}
+              style={{ width: "100%" }}
+            >
+              <Play size={18} /> Jetzt lernen starten
             </Button>
-            {vocab.length === 0 && <div style={{ color: C.textFaint, fontSize: 12.5, marginTop: 8 }}>Lege zuerst Vokabeln in der Liste an.</div>}
-          </div>
-        );
-      }
-
-      if (phase === "won" || phase === "timeup") {
-        const won = phase === "won";
-        return (
-          <div style={{ maxWidth: 460, margin: "40px auto", textAlign: "center" }}>
-            <Sparkles size={40} color={won ? C.amber : C.textFaint} style={{ marginBottom: 10 }} />
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 24, color: C.text }}>{won ? "Ziel erreicht! 🎉" : "Zeit abgelaufen"}</div>
-            <div style={{ color: C.textMuted, marginTop: 8 }}>
-              {score} von {goal} · {wrong} Fehler{won && ` · noch ${timeLeft}s übrig`}
-            </div>
-            <Button variant="accent" style={{ marginTop: 22 }} onClick={() => setPhase("setup")}><RotateCcw size={16} /> Neues Spiel</Button>
-          </div>
-        );
-      }
-
-      return (
-        <div style={{ maxWidth: 520, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ color: C.text, fontWeight: 700, fontSize: 20, fontFamily: "Fraunces, serif" }}>{timeLeft}s</span>
-            <span style={{ color: C.textMuted, fontSize: 13.5 }}>{score} / {goal} richtig</span>
-          </div>
-          <div style={{ height: 6, borderRadius: 999, background: C.surfaceAlt, overflow: "hidden", marginBottom: 20 }}>
-            <div style={{ height: "100%", width: `${timePct}%`, background: timePct < 25 ? C.danger : C.amber, transition: "width 1s linear" }} />
-          </div>
-
-          <div style={{ border: `1px solid ${C.border}`, borderRadius: 14, padding: 14, marginBottom: 18, background: C.surface }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.textFaint, marginBottom: 8 }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Target size={13} /> Fortschritt zum Ziel</span>
-              <span>{progressPct}%</span>
-            </div>
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-              {Array.from({ length: goal }).map((_, i) => (
-                <div key={i} style={{
-                  width: 16, height: 22, borderRadius: 3,
-                  background: i < score ? C.accent : C.surfaceAlt,
-                  border: `1px solid ${i < score ? C.accentStrong : C.border}`,
-                  transition: "background .2s ease",
-                }} />
-              ))}
-            </div>
-          </div>
-
-          <div style={{
-            background: flash === "ok" ? C.accentSoft : flash === "no" ? C.dangerSoft : C.surface,
-            border: `1px solid ${flash === "ok" ? C.accent : flash === "no" ? C.danger : C.border}`,
-            borderRadius: 18, padding: 28, transition: "background .2s ease, border-color .2s ease",
-          }}>
-            <div style={{ color: C.textFaint, fontSize: 12.5, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Definition</div>
-            <div style={{ color: C.text, fontSize: 18, whiteSpace: "pre-wrap", lineHeight: 1.5, marginBottom: 20 }}>{current?.definition}</div>
-            <TextInput ref={inputRef} placeholder="Begriff eingeben und Enter drücken …" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} />
           </div>
         </div>
       );
@@ -1000,8 +867,6 @@
       const tabs = [
         { id: "learn", label: "Lernen", icon: Layers },
         { id: "list", label: "Liste", icon: ListChecks },
-        { id: "expert", label: "Experte", icon: GraduationCap },
-        { id: "game", label: "Spiel", icon: Gamepad2 },
       ];
 
       return (
@@ -1069,8 +934,6 @@
                     onMoveMany={moveVocabMany}
                   />
                 )}
-                {tab === "expert" && <ExpertView vocab={vocab} onSetBox={setVocabBox} />}
-                {tab === "game" && <GameView vocab={vocab} />}
               </>
             )}
           </div>
