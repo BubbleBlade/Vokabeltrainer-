@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vokabeltrainer</title>
+  
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background-color: #1B2320;
+      color: #EAE7DD;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    ::selection {
+      background: rgba(131,169,141,0.16);
+    }
+    input[type=checkbox] {
+      accent-color: #5F8A6E;
+      width: 16px;
+      height: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo, forwardRef } = React;
+
+    /* ------------------------------------------------------------------ */
+    /* Polyfill für window.storage (LocalStorage Fallback)                */
+    /* ------------------------------------------------------------------ */
+    if (!window.storage) {
+      window.storage = {
+        async get(key) {
+          const val = localStorage.getItem(key);
+          return val ? { value: val } : null;
+        },
+        async set(key, value) {
+          localStorage.setItem(key, value);
+        }
+      };
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Lucide Icons Wrapper Component                                     */
+    /* ------------------------------------------------------------------ */
+    const Icon = ({ name, size = 18, color = "currentColor", style = {} }) => {
+      const ref = useRef(null);
+
+      useEffect(() => {
+        if (ref.current && window.lucide) {
+          ref.current.innerHTML = `<i data-lucide="${name}"></i>`;
+          window.lucide.createIcons({
+            attrs: {
+              width: size,
+              height: size,
+              stroke: color
+            },
+            nameAttr: 'data-lucide',
+            el: ref.current
+          });
+        }
+      }, [name, size, color]);
+
+      return <span ref={ref} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', ...style }} />;
+    };
+
+    /* Icon Shortcuts */
+    const Plus = (props) => <Icon name="plus" {...props} />;
+    const Trash2 = (props) => <Icon name="trash-2" {...props} />;
+    const ArrowRightLeft = (props) => <Icon name="arrow-right-left" {...props} />;
+    const BookOpen = (props) => <Icon name="book-open" {...props} />;
+    const Gamepad2 = (props) => <Icon name="gamepad-2" {...props} />;
+    const GraduationCap = (props) => <Icon name="graduation-cap" {...props} />;
+    const ClipboardCopy = (props) => <Icon name="clipboard-copy" {...props} />;
+    const ClipboardPaste = (props) => <Icon name="clipboard-paste" {...props} />;
+    const FileUp = (props) => <Icon name="file-up" {...props} />;
+    const X = (props) => <Icon name="x" {...props} />;
+    const Check = (props) => <Icon name="check" {...props} />;
+    const ChevronDown = (props) => <Icon name="chevron-down" {...props} />;
+    const Settings = (props) => <Icon name="settings" {...props} />;
+    const Layers = (props) => <Icon name="layers" {...props} />;
+    const Timer = (props) => <Icon name="timer" {...props} />;
+    const Target = (props) => <Icon name="target" {...props} />;
+    const RotateCcw = (props) => <Icon name="rotate-ccw" {...props} />;
+    const Pencil = (props) => <Icon name="pencil" {...props} />;
+    const Search = (props) => <Icon name="search" {...props} />;
+    const Sparkles = (props) => <Icon name="sparkles" {...props} />;
+    const ListChecks = (props) => <Icon name="list-checks" {...props} />;
+
+    /* ------------------------------------------------------------------ */
+    /* Design tokens – ruhige, augenschonende Waldgrün-Palette            */
+    /* ------------------------------------------------------------------ */
+    const C = {
+      bg: "#1B2320",
+      bgSoft: "#212B26",
+      surface: "#28322D",
+      surfaceAlt: "#303C35",
+      border: "#3B4941",
+      borderLight: "#4A5A51",
+      text: "#EAE7DD",
+      textMuted: "#96A89D",
+      textFaint: "#6D7E75",
+      accent: "#83A98D",
+      accentStrong: "#5F8A6E",
+      accentSoft: "rgba(131,169,141,0.16)",
+      amber: "#DCA45C",
+      amberSoft: "rgba(220,164,92,0.16)",
+      danger: "#C1685B",
+      dangerSoft: "rgba(193,104,91,0.16)",
+      box: ["#C1685B", "#DCA45C", "#B7C17A", "#83A98D"],
+      boxSoft: ["rgba(193,104,91,0.16)", "rgba(220,164,92,0.16)", "rgba(183,193,122,0.16)", "rgba(131,169,141,0.16)"],
+    };
+    const BOX_LABELS = ["Neu / schwer", "Alle 3 Tage", "Wöchentlich", "Gelernt"];
+    const STORAGE_KEY = "vokabeltrainer-data-v1";
+
+    const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    const shuffle = (arr) => {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+
+    function defaultData() {
+      const subjectId = uid();
+      const now = Date.now();
+      return {
+        subjects: [{ id: subjectId, name: "Englisch" }],
+        vocab: [
+          { id: uid(), subjectId, term: "the journey", definition: "die Reise\n(auch: die Fahrt, der Weg irgendwohin)", box: 1, createdAt: now },
+          { id: uid(), subjectId, term: "to achieve", definition: "erreichen, erzielen", box: 2, createdAt: now },
+          { id: uid(), subjectId, term: "reliable", definition: "verlässlich, zuverlässig", box: 3, createdAt: now },
+          { id: uid(), subjectId, term: "the weather", definition: "das Wetter", box: 4, createdAt: now },
+        ],
+        currentSubjectId: subjectId,
+      };
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Zwischenablage- / Datei-Import-Parser                               */
+    /* ------------------------------------------------------------------ */
+    function buildExportText(list) {
+      return list
+        .map((v) => {
+          const defLines = (v.definition || "").split("\n");
+          return [`BEGRIFF: ${v.term}`, `DEFINITION: ${defLines[0] || ""}`, ...defLines.slice(1), `BOX: ${v.box}`].join("\n");
+        })
+        .join("\n---\n");
+    }
+
+    function parseImportText(text) {
+      if (!text || !text.trim()) return [];
+      
+      // 1. Check: Block-Format mit BEGRIFF: / DEFINITION:
+      if (/BEGRIFF:/i.test(text)) {
+        const blocks = text.split(/\n?-{3,}\n?/).map((b) => b.trim()).filter(Boolean);
+        const results = [];
+        for (const block of blocks) {
+          const lines = block.split("\n");
+          let term = "";
+          let definition = [];
+          let box = 1;
+          let mode = null;
+          for (const raw of lines) {
+            const line = raw;
+            if (/^BEGRIFF:/i.test(line)) {
+              term = line.replace(/^BEGRIFF:/i, "").trim();
+              mode = null;
+            } else if (/^DEFINITION:/i.test(line)) {
+              const rest = line.replace(/^DEFINITION:/i, "").trim();
+              if (rest) definition.push(rest);
+              mode = "def";
+            } else if (/^BOX:/i.test(line)) {
+              const n = parseInt(line.replace(/^BOX:/i, "").trim(), 10);
+              if (n >= 1 && n <= 4) box = n;
+              mode = null;
+            } else if (mode === "def") {
+              definition.push(line);
+            }
+          }
+          if (term) results.push({ term, definition: definition.join("\n").trim(), box });
+        }
+        if (results.length > 0) return results;
+      }
+
+      // 2. CSV / Zeilenbasiertes Format (z.B. Begriff;Definition oder Begriff,Definition oder Tab-getrennt)
+      const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+      const results = [];
+
+      for (const line of lines) {
+        // Ignoriere typische Header-Zeilen
+        if (/^(begriff|term|word|vokabel)[;,\t]/i.test(line)) continue;
+
+        let parts = [];
+        if (line.includes(";")) {
+          parts = line.split(";");
+        } else if (line.includes("\t")) {
+          parts = line.split("\t");
+        } else if (line.includes(",")) {
+          parts = line.split(",");
+        } else if (line.includes(" - ")) {
+          parts = line.split(" - ");
+        } else if (line.includes(" = ")) {
+          parts = line.split(" = ");
+        }
+
+        if (parts.length >= 2) {
+          const term = parts[0].trim();
+          const definition = parts.slice(1).join(", ").trim();
+          if (term && definition) {
+            results.push({ term, definition, box: 1 });
+          }
+        }
+      }
+
+      return results;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Kleine UI-Bausteine                                                */
+    /* ------------------------------------------------------------------ */
+    function Button({ children, onClick, variant = "default", size = "md", disabled, style, title }) {
+      const base = {
+        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+        borderRadius: 10, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer",
+        border: "1px solid transparent", transition: "all .15s ease", whiteSpace: "nowrap",
+        opacity: disabled ? 0.45 : 1,
+      };
+      const sizes = { sm: { padding: "6px 10px", fontSize: 13 }, md: { padding: "9px 14px", fontSize: 14 }, lg: { padding: "12px 20px", fontSize: 15 } };
+      const variants = {
+        default: { background: C.surfaceAlt, color: C.text, borderColor: C.border },
+        accent: { background: C.accentStrong, color: "#0F1512" },
+        amber: { background: C.amber, color: "#241A0B" },
+        danger: { background: "transparent", color: C.danger, borderColor: C.dangerSoft },
+        ghost: { background: "transparent", color: C.textMuted },
+        subtle: { background: C.accentSoft, color: C.accent },
+      };
+      return (
+        <button
+          title={title}
+          disabled={disabled}
+          onClick={onClick}
+          style={{ ...base, ...sizes[size], ...variants[variant], ...style }}
+          onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.filter = "brightness(1.12)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    function Modal({ title, onClose, children, width = 480 }) {
+      return (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(10,14,12,0.6)", backdropFilter: "blur(2px)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: width, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <h3 style={{ margin: 0, fontFamily: "Fraunces, serif", fontSize: 19, color: C.text }}>{title}</h3>
+              <button onClick={onClose} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer" }}><X size={20} /></button>
+            </div>
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    const TextInput = forwardRef(function TextInput(props, ref) {
+      return (
+        <input
+          {...props}
+          ref={ref}
+          style={{
+            width: "100%", background: C.bgSoft, border: `1px solid ${C.border}`, borderRadius: 10,
+            padding: "10px 12px", color: C.text, fontSize: 14, outline: "none", ...(props.style || {}),
+          }}
+          onFocus={(e) => (e.target.style.borderColor = C.accent)}
+          onBlur={(e) => (e.target.style.borderColor = C.border)}
+        />
+      );
+    });
+
+    function TextArea(props) {
+      return (
+        <textarea
+          {...props}
+          style={{
+            width: "100%", background: C.bgSoft, border: `1px solid ${C.border}`, borderRadius: 10,
+            padding: "10px 12px", color: C.text, fontSize: 14, outline: "none", resize: "vertical",
+            fontFamily: "inherit", lineHeight: 1.5, ...(props.style || {}),
+          }}
+          onFocus={(e) => (e.target.style.borderColor = C.accent)}
+          onBlur={(e) => (e.target.style.borderColor = C.border)}
+        />
+      );
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Box-Illustration (Signature-Element)                               */
+    /* ------------------------------------------------------------------ */
+    function DrawerBox({ index, count, onClick, active }) {
+      const color = C.box[index];
+      const soft = C.boxSoft[index];
+      const visibleCards = Math.min(count, 6);
+      return (
+        <button
+          onClick={onClick}
+          disabled={count === 0}
+          style={{
+            textAlign: "left", cursor: count === 0 ? "default" : "pointer", border: `1px solid ${active ? color : C.border}`,
+            background: active ? soft : C.surface, borderRadius: 14, padding: 16, flex: "1 1 200px", minWidth: 160,
+            transition: "all .18s ease", position: "relative", overflow: "hidden",
+          }}
+          onMouseEnter={(e) => { if (count > 0) e.currentTarget.style.borderColor = color; }}
+          onMouseLeave={(e) => { if (!active) e.currentTarget.style.borderColor = C.border; }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontSize: 12, letterSpacing: 0.5, color: C.textMuted, textTransform: "uppercase" }}>Box {index + 1}</div>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 26, color: C.text, marginTop: 2 }}>{count}</div>
+              <div style={{ fontSize: 12.5, color: C.textFaint, marginTop: 2 }}>{BOX_LABELS[index]}</div>
+            </div>
+            <div style={{ position: "relative", width: 46, height: 40 }}>
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 20, borderRadius: 6, background: color, opacity: 0.25 }} />
+              {Array.from({ length: visibleCards }).map((_, i) => (
+                <div key={i} style={{
+                  position: "absolute", left: i * 3, bottom: 4 + i * 2.5, width: 30, height: 18, borderRadius: 4,
+                  background: color, opacity: 0.55 + i * 0.07, border: `1px solid ${C.bg}`,
+                }} />
+              ))}
+              {count > 6 && (
+                <div style={{ position: "absolute", top: -6, right: -4, fontSize: 10, color, fontWeight: 700 }}>+{count - 6}</div>
+              )}
+            </div>
+          </div>
+        </button>
+      );
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Fächer-Verwaltung Modal                                            */
+    /* ------------------------------------------------------------------ */
+    function SubjectModal({ subjects, onClose, onAdd, onDelete }) {
+      const [name, setName] = useState("");
+      const [confirmId, setConfirmId] = useState(null);
+      return (
+        <Modal title="Fächer verwalten" onClose={onClose}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            <TextInput
+              placeholder="Neues Fach, z. B. Französisch"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) { onAdd(name.trim()); setName(""); } }}
+            />
+            <Button variant="accent" onClick={() => { if (name.trim()) { onAdd(name.trim()); setName(""); } }}><Plus size={16} /> Anlegen</Button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto" }}>
+            {subjects.map((s) => (
+              <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.bgSoft, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px" }}>
+                <span style={{ color: C.text, fontSize: 14 }}>{s.name}</span>
+                {confirmId === s.id ? (
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Button size="sm" variant="danger" onClick={() => { onDelete(s.id); setConfirmId(null); }}>Löschen bestätigen</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmId(null)}>Abbrechen</Button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmId(s.id)} style={{ background: "none", border: "none", color: C.textFaint, cursor: "pointer" }} title="Fach löschen">
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
+            {subjects.length === 0 && <div style={{ color: C.textFaint, fontSize: 13.5 }}>Noch keine Fächer angelegt.</div>}
+          </div>
+        </Modal>
+      );
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Import Modal                                                       */
+    /* ------------------------------------------------------------------ */
+    function ImportModal({ onClose, onImport, subjectName }) {
+      const [text, setText] = useState("");
+      const [error, setError] = useState("");
+      const [preview, setPreview] = useState(null);
+      const fileInputRef = useRef(null);
+
+      async function pasteFromClipboard() {
+        try {
+          const clip = await navigator.clipboard.readText();
+          setText(clip);
+          setError("");
+          autoPreview(clip);
+        } catch {
+          setError("Zwischenablage konnte nicht gelesen werden. Bitte per Strg+V einfügen.");
+        }
+      }
+
+      function handleFileUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const content = evt.target.result;
+          setText(content);
+          setError("");
+          autoPreview(content);
+        };
+        reader.readAsText(file);
+      }
+
+      function autoPreview(content) {
+        const parsed = parseImportText(content);
+        if (parsed.length > 0) {
+          setPreview(parsed);
+          setError("");
+        } else {
+          setPreview(null);
+        }
+      }
+
+      function handleCheck() {
+        const parsed = parseImportText(text);
+        if (parsed.length === 0) {
+          setError("Es konnte keine Vokabel erkannt werden. Bitte Format prüfen.");
+          setPreview(null);
+        } else {
+          setError("");
+          setPreview(parsed);
+        }
+      }
+
+      return (
+        <Modal title={`Liste importieren – Fach „${subjectName}“`} onClose={onClose} width={580}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+            <Button size="sm" variant="subtle" onClick={pasteFromClipboard}>
+              <ClipboardPaste size={15} /> Aus Zwischenablage einfügen
+            </Button>
+            <Button size="sm" variant="default" onClick={() => fileInputRef.current && fileInputRef.current.click()}>
+              <FileUp size={15} /> CSV / TXT-Datei laden
+            </Button>
+            <input type="file" accept=".csv,.txt" ref={fileInputRef} onChange={handleFileUpload} style={{ display: "none" }} />
+          </div>
+
+          <TextArea
+            rows={8}
+            placeholder="Hier Text oder CSV einfügen (z. B. Haus;house oder BEGRIFF:...)"
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              setPreview(null);
+            }}
+          />
+
+          <details style={{ marginTop: 8, color: C.textFaint, fontSize: 12.5 }}>
+            <summary style={{ cursor: "pointer", color: C.textMuted }}>Unterstützte Formate anzeigen</summary>
+            <div style={{ background: C.bgSoft, padding: 10, borderRadius: 8, marginTop: 6, lineHeight: 1.5 }}>
+              <strong>1. Einfaches Trennzeichen (CSV / Excel):</strong>
+              <pre style={{ margin: "4px 0 8px 0" }}>{`Apfel, apple\nHaus; house\nTisch \t table`}</pre>
+              <strong>2. Block-Format:</strong>
+              <pre style={{ margin: "4px 0 0 0" }}>{`BEGRIFF: Apfel\nDEFINITION: apple\nBOX: 2\n---\nBEGRIFF: Haus\nDEFINITION: house`}</pre>
+            </div>
+          </details>
+
+          {error && <div style={{ color: C.danger, fontSize: 13, marginTop: 8 }}>{error}</div>}
+          
+          {preview && (
+            <div style={{ marginTop: 10, color: C.accent, fontSize: 13.5, fontWeight: 600 }}>
+              ✓ {preview.length} Vokabel{preview.length === 1 ? "" : "n"} erkannt – bereit zum Import in „{subjectName}“.
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+            <Button variant="ghost" onClick={onClose}>Abbrechen</Button>
+            {!preview ? (
+              <Button variant="default" onClick={handleCheck}>Prüfen</Button>
+            ) : (
+              <Button variant="accent" onClick={() => { onImport(preview); onClose(); }}>
+                <Check size={16} /> {preview.length} Vokabeln übernehmen
+              </Button>
+            )}
+          </div>
+        </Modal>
+      );
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Liste / Verwalten                                                  */
+    /* ------------------------------------------------------------------ */
+    function ListView({ vocab, subjectName, onAdd, onUpdate, onDeleteMany, onMoveMany }) {
+      const [term, setTerm] = useState("");
+      const [definition, setDefinition] = useState("");
+      const [editId, setEditId] = useState(null);
+      const [selected, setSelected] = useState(new Set());
+      const [search, setSearch] = useState("");
+      const [boxFilter, setBoxFilter] = useState("all");
+      const [showImport, setShowImport] = useState(false);
+      const [exportFallback, setExportFallback] = useState(null);
+      const [copyMsg, setCopyMsg] = useState("");
+
+      const filtered = useMemo(() => {
+        return vocab.filter((v) => {
+          if (boxFilter !== "all" && v.box !== Number(boxFilter)) return false;
+          if (search && !(v.term.toLowerCase().includes(search.toLowerCase()) || v.definition.toLowerCase().includes(search.toLowerCase()))) return false;
+          return true;
+        });
+      }, [vocab, search, boxFilter]);
+
+      function toggle(id) {
+        setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+      }
+      function toggleAll() {
+        setSelected((s) => s.size === filtered.length ? new Set() : new Set(filtered.map((v) => v.id)));
+      }
+      function submit() {
+        if (!term.trim()) return;
+        if (editId) { onUpdate(editId, term.trim(), definition.trim()); setEditId(null); }
+        else { onAdd(term.trim(), definition.trim()); }
+        setTerm(""); setDefinition("");
+      }
+      function startEdit(v) {
+        setEditId(v.id); setTerm(v.term); setDefinition(v.definition);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      async function handleExport() {
+        const listToExport = selected.size > 0 ? vocab.filter((v) => selected.has(v.id)) : vocab;
+        const text = buildExportText(listToExport);
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopyMsg(`${listToExport.length} Vokabel${listToExport.length === 1 ? "" : "n"} kopiert!`);
+          setExportFallback(null);
+          setTimeout(() => setCopyMsg(""), 2500);
+        } catch {
+          setExportFallback(text);
+        }
+      }
+
+      return (
+        <div>
+          {/* Formular */}
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 16, marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontSize: 13, color: C.textMuted, fontWeight: 600 }}>
+                {editId ? "Vokabel bearbeiten" : `Neue Vokabel in „${subjectName}“`}
+              </span>
+              {!editId && (
+                <Button size="sm" variant="subtle" onClick={() => setShowImport(true)}>
+                  <FileUp size={14} /> Vokabeln importieren
+                </Button>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <TextInput placeholder="Begriff (z. B. reliable)" value={term} onChange={(e) => setTerm(e.target.value)} />
+              <TextArea placeholder="Definition / Übersetzung (mehrzeilig möglich)" rows={3} value={definition} onChange={(e) => setDefinition(e.target.value)} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <Button variant="accent" onClick={submit}>{editId ? <><Check size={16} /> Speichern</> : <><Plus size={16} /> Hinzufügen</>}</Button>
+                {editId && <Button variant="ghost" onClick={() => { setEditId(null); setTerm(""); setDefinition(""); }}>Abbrechen</Button>}
+              </div>
+            </div>
+          </div>
+
+          {/* Toolbar */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}>
+            <div style={{ position: "relative", flex: "1 1 200px" }}>
+              <Search size={15} style={{ position: "absolute", left: 10, top: 11, color: C.textFaint }} />
+              <TextInput placeholder="Suchen …" value={search} onChange={(e) => setSearch(e.target.value)} style={{ paddingLeft: 32 }} />
+            </div>
+            <select value={boxFilter} onChange={(e) => setBoxFilter(e.target.value)} style={{ background: C.bgSoft, border: `1px solid ${C.border}`, color: C.text, borderRadius: 10, padding: "9px 10px", fontSize: 13.5 }}>
+              <option value="all">Alle Boxen</option>
+              {[1, 2, 3, 4].map((n) => <option key={n} value={n}>Box {n}</option>)}
+            </select>
+            <Button size="sm" variant="subtle" onClick={handleExport}><ClipboardCopy size={15} /> {selected.size > 0 ? `${selected.size} kopieren` : "Alle kopieren"}</Button>
+            <Button size="sm" variant="subtle" onClick={() => setShowImport(true)}><ClipboardPaste size={15} /> Importieren</Button>
+          </div>
+          {copyMsg && <div style={{ color: C.accent, fontSize: 13, marginBottom: 8 }}>{copyMsg}</div>}
+          {exportFallback && (
+            <div style={{ marginBottom: 12, background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: 10 }}>
+              <div style={{ fontSize: 12.5, color: C.textMuted, marginBottom: 6 }}>Automatisches Kopieren nicht möglich – bitte manuell markieren und kopieren:</div>
+              <TextArea rows={4} readOnly value={exportFallback} onFocus={(e) => e.target.select()} />
+            </div>
+          )}
+
+          {selected.size > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+              <span style={{ color: C.accent, fontSize: 13.5, fontWeight: 600 }}>{selected.size} ausgewählt</span>
+              <ArrowRightLeft size={15} color={C.accent} />
+              {[1, 2, 3, 4].map((n) => (
+                <Button key={n} size="sm" variant="default" onClick={() => { onMoveMany([...selected], n); setSelected(new Set()); }}>→ Box {n}</Button>
+              ))}
+              <Button size="sm" variant="danger" onClick={() => { onDeleteMany([...selected]); setSelected(new Set()); }}><Trash2 size={14} /> Löschen</Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Auswahl aufheben</Button>
+            </div>
+          )}
+
+          {/* Tabelle */}
+          <div style={{ border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: C.surfaceAlt, borderBottom: `1px solid ${C.border}`, fontSize: 12.5, color: C.textMuted, fontWeight: 600 }}>
+              <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleAll} />
+              <div style={{ flex: "1 1 160px" }}>BEGRIFF</div>
+              <div style={{ flex: "2 1 260px" }}>DEFINITION</div>
+              <div style={{ width: 70, textAlign: "center" }}>BOX</div>
+              <div style={{ width: 70 }} />
+            </div>
+            {filtered.length === 0 && (
+              <div style={{ padding: 24, textAlign: "center", color: C.textFaint, fontSize: 13.5 }}>
+                {vocab.length === 0 ? "Noch keine Vokabeln in diesem Fach. Oben eine anlegen oder eine Liste importieren." : "Keine Treffer für diesen Filter."}
+              </div>
+            )}
+            {filtered.map((v) => (
+              <div key={v.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", borderBottom: `1px solid ${C.border}`, background: selected.has(v.id) ? C.accentSoft : "transparent" }}>
+                <input type="checkbox" checked={selected.has(v.id)} onChange={() => toggle(v.id)} style={{ marginTop: 4 }} />
+                <div style={{ flex: "1 1 160px", color: C.text, fontWeight: 600, fontSize: 14 }}>{v.term}</div>
+                <div style={{ flex: "2 1 260px", color: C.textMuted, fontSize: 13.5, whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{v.definition}</div>
+                <div style={{ width: 70, textAlign: "center" }}>
+                  <span style={{ display: "inline-block", padding: "3px 8px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: C.boxSoft[v.box - 1], color: C.box[v.box - 1] }}>Box {v.box}</span>
+                </div>
+                <div style={{ width: 70, display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                  <button onClick={() => startEdit(v)} title="Bearbeiten" style={{ background: "none", border: "none", color: C.textFaint, cursor: "pointer" }}><Pencil size={15} /></button>
+                  <button onClick={() => onDeleteMany([v.id])} title="Löschen" style={{ background: "none", border: "none", color: C.textFaint, cursor: "pointer" }}><Trash2 size={15} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {showImport && <ImportModal subjectName={subjectName} onClose={() => setShowImport(false)} onImport={(list) => { list.forEach((p) => onAdd(p.term, p.definition, p.box)); }} />}
+        </div>
+      );
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Lernen (4-Boxen Leitner)                                           */
+    /* ------------------------------------------------------------------ */
+    function LearnView({ vocab, onSetBox }) {
+      const counts = [1, 2, 3, 4].map((n) => vocab.filter((v) => v.box === n).length);
+      const [session, setSession] = useState(null);
+
+      function startSession(boxNum) {
+        const cards = shuffle(vocab.filter((v) => v.box === boxNum));
+        setSession({ boxNum, queue: cards, index: 0, revealed: false, correct: 0, wrong: 0 });
+      }
+      function answer(know) {
+        const card = session.queue[session.index];
+        onSetBox(card.id, know ? Math.min(card.box + 1, 4) : 1);
+        setSession((s) => ({
+          ...s, revealed: false, index: s.index + 1,
+          correct: s.correct + (know ? 1 : 0), wrong: s.wrong + (know ? 0 : 1),
+        }));
+      }
+
+      if (session && session.index < session.queue.length) {
+        const card = session.queue[session.index];
+        return (
+          <div style={{ maxWidth: 560, margin: "0 auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <span style={{ color: C.textMuted, fontSize: 13 }}>Box {session.boxNum} · Karte {session.index + 1} / {session.queue.length}</span>
+              <Button size="sm" variant="ghost" onClick={() => setSession(null)}>Abbrechen</Button>
+            </div>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: 32, minHeight: 220, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 28, color: C.text }}>{card.term}</div>
+              {session.revealed && (
+                <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}`, color: C.accent, fontSize: 16.5, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{card.definition}</div>
+              )}
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 18 }}>
+              {!session.revealed ? (
+                <Button variant="accent" size="lg" onClick={() => setSession((s) => ({ ...s, revealed: true }))}>Antwort zeigen</Button>
+              ) : (
+                <>
+                  <Button variant="danger" size="lg" onClick={() => answer(false)}>Nochmal üben</Button>
+                  <Button variant="accent" size="lg" onClick={() => answer(true)}>Kann ich ✓</Button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      }
+      if (session && session.index >= session.queue.length) {
+        return (
+          <div style={{ maxWidth: 480, margin: "40px auto", textAlign: "center" }}>
+            <Sparkles size={36} color={C.amber} style={{ marginBottom: 10 }} />
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, color: C.text }}>Box {session.boxNum} geschafft!</div>
+            <div style={{ color: C.textMuted, marginTop: 6 }}>{session.correct} gewusst · {session.wrong} wiederholt</div>
+            <Button variant="accent" style={{ marginTop: 20 }} onClick={() => setSession(null)}>Zurück zur Übersicht</Button>
+          </div>
+        );
+      }
+
+      return (
+        <div>
+          <div style={{ color: C.textMuted, fontSize: 14, marginBottom: 14 }}>
+            Wähle eine Box zum Üben. Richtig beantwortet wandert die Karte eine Box weiter, falsch beantwortet zurück in Box 1.
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {counts.map((c, i) => <DrawerBox key={i} index={i} count={c} onClick={() => startSession(i + 1)} />)}
+          </div>
+        </div>
+      );
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Experten-Modus                                                     */
+    /* ------------------------------------------------------------------ */
+    function ExpertView({ vocab, onSetBox }) {
+      const [session, setSession] = useState(null);
+      const inputRef = useRef(null);
+
+      function start() {
+        setSession({ queue: shuffle(vocab), index: 0, input: "", feedback: null, correct: 0, wrong: 0 });
+      }
+      function check() {
+        const card = session.queue[session.index];
+        const ok = session.input.trim().toLowerCase() === card.term.trim().toLowerCase();
+        onSetBox(card.id, ok ? Math.min(card.box + 1, 4) : 1);
+        setSession((s) => ({ ...s, feedback: ok ? "correct" : "wrong", correct: s.correct + (ok ? 1 : 0), wrong: s.wrong + (ok ? 0 : 1) }));
+      }
+      function next() {
+        setSession((s) => ({ ...s, index: s.index + 1, input: "", feedback: null }));
+        setTimeout(() => inputRef.current && inputRef.current.focus(), 30);
+      }
+
+      useEffect(() => { if (session && !session.feedback) inputRef.current && inputRef.current.focus(); }, [session?.index, session?.feedback]);
+
+      if (!session) {
+        return (
+          <div style={{ maxWidth: 480, margin: "40px auto", textAlign: "center" }}>
+            <GraduationCap size={34} color={C.accent} style={{ marginBottom: 10 }} />
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, color: C.text }}>Experten-Modus</div>
+            <div style={{ color: C.textMuted, marginTop: 8, lineHeight: 1.5 }}>Du siehst die Definition und tippst den passenden Begriff. So prägst du dir die Schreibweise wirklich ein.</div>
+            <Button variant="accent" style={{ marginTop: 20 }} disabled={vocab.length === 0} onClick={start}>Starten ({vocab.length} Vokabeln)</Button>
+            {vocab.length === 0 && <div style={{ color: C.textFaint, fontSize: 12.5, marginTop: 8 }}>Lege zuerst Vokabeln in der Liste an.</div>}
+          </div>
+        );
+      }
+      if (session.index >= session.queue.length) {
+        return (
+          <div style={{ maxWidth: 480, margin: "40px auto", textAlign: "center" }}>
+            <Sparkles size={36} color={C.amber} style={{ marginBottom: 10 }} />
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, color: C.text }}>Runde beendet</div>
+            <div style={{ color: C.textMuted, marginTop: 6 }}>{session.correct} richtig · {session.wrong} falsch</div>
+            <Button variant="accent" style={{ marginTop: 20 }} onClick={start}><RotateCcw size={16} /> Nochmal</Button>
+          </div>
+        );
+      }
+      const card = session.queue[session.index];
+      return (
+        <div style={{ maxWidth: 520, margin: "0 auto" }}>
+          <div style={{ color: C.textMuted, fontSize: 13, marginBottom: 12, display: "flex", justifyContent: "space-between" }}>
+            <span>Karte {session.index + 1} / {session.queue.length}</span>
+            <span>{session.correct} richtig · {session.wrong} falsch</span>
+          </div>
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: 28 }}>
+            <div style={{ color: C.textFaint, fontSize: 12.5, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Definition</div>
+            <div style={{ color: C.text, fontSize: 18, whiteSpace: "pre-wrap", lineHeight: 1.5, marginBottom: 20 }}>{card.definition}</div>
+            <TextInput
+              ref={inputRef}
+              disabled={!!session.feedback}
+              placeholder="Begriff eingeben …"
+              value={session.input}
+              onChange={(e) => setSession((s) => ({ ...s, input: e.target.value }))}
+              onKeyDown={(e) => { if (e.key === "Enter") { session.feedback ? next() : check(); } }}
+            />
+            {session.feedback && (
+              <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: session.feedback === "correct" ? C.accentSoft : C.dangerSoft, color: session.feedback === "correct" ? C.accent : C.danger, fontSize: 14 }}>
+                {session.feedback === "correct" ? "Richtig! ✓" : <>Richtig wäre: <strong>{card.term}</strong></>}
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              {!session.feedback ? <Button variant="accent" onClick={check}>Prüfen</Button> : <Button variant="accent" onClick={next}>Weiter →</Button>}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Spiel-Modus (gegen die Zeit)                                       */
+    /* ------------------------------------------------------------------ */
+    function GameView({ vocab }) {
+      const [phase, setPhase] = useState("setup");
+      const [duration, setDuration] = useState(60);
+      const [goal, setGoal] = useState(15);
+      const [timeLeft, setTimeLeft] = useState(60);
+      const [score, setScore] = useState(0);
+      const [wrong, setWrong] = useState(0);
+      const [current, setCurrent] = useState(null);
+      const [input, setInput] = useState("");
+      const [flash, setFlash] = useState(null);
+      const inputRef = useRef(null);
+
+      useEffect(() => {
+        if (phase !== "playing") return;
+        const iv = setInterval(() => {
+          setTimeLeft((t) => {
+            if (t <= 1) { clearInterval(iv); setPhase("timeup"); return 0; }
+            return t - 1;
+          });
+        }, 1000);
+        return () => clearInterval(iv);
+      }, [phase]);
+
+      function pickNext(lastId) {
+        if (vocab.length === 1) return vocab[0];
+        let q;
+        do { q = vocab[Math.floor(Math.random() * vocab.length)]; } while (q.id === lastId);
+        return q;
+      }
+      function start() {
+        setScore(0); setWrong(0); setTimeLeft(duration); setInput(""); setFlash(null);
+        setCurrent(pickNext(null));
+        setPhase("playing");
+        setTimeout(() => inputRef.current && inputRef.current.focus(), 30);
+      }
+      function submit() {
+        if (!input.trim()) return;
+        const ok = input.trim().toLowerCase() === current.term.trim().toLowerCase();
+        setFlash(ok ? "ok" : "no");
+        setTimeout(() => setFlash(null), 350);
+        if (ok) {
+          const newScore = score + 1;
+          setScore(newScore);
+          if (newScore >= goal) { setPhase("won"); return; }
+        } else {
+          setWrong((w) => w + 1);
+        }
+        setInput("");
+        setCurrent(pickNext(current.id));
+        inputRef.current && inputRef.current.focus();
+      }
+
+      const progressPct = Math.min(100, Math.round((score / goal) * 100));
+      const timePct = Math.round((timeLeft / duration) * 100);
+
+      if (phase === "setup") {
+        return (
+          <div style={{ maxWidth: 480, margin: "20px auto", textAlign: "center" }}>
+            <Gamepad2 size={34} color={C.amber} style={{ marginBottom: 10 }} />
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, color: C.text }}>Spiel-Modus</div>
+            <div style={{ color: C.textMuted, marginTop: 8, lineHeight: 1.5 }}>Tippe so viele Begriffe wie möglich richtig ein, bevor die Zeit abläuft – und erreiche dein Ziel.</div>
+
+            <div style={{ marginTop: 24, textAlign: "left" }}>
+              <div style={{ color: C.textFaint, fontSize: 12.5, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Zeit</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[30, 60, 90].map((d) => (
+                  <Button key={d} variant={duration === d ? "accent" : "default"} onClick={() => setDuration(d)} style={{ flex: 1 }}>{d}s</Button>
+                ))}
+              </div>
+              <div style={{ color: C.textFaint, fontSize: 12.5, margin: "16px 0 6px", textTransform: "uppercase", letterSpacing: 0.5 }}>Ziel (richtige Antworten)</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[10, 15, 25].map((g) => (
+                  <Button key={g} variant={goal === g ? "amber" : "default"} onClick={() => setGoal(g)} style={{ flex: 1 }}>{g}</Button>
+                ))}
+              </div>
+            </div>
+
+            <Button variant="accent" size="lg" style={{ marginTop: 26 }} disabled={vocab.length === 0} onClick={start}>
+              <Timer size={17} /> Spiel starten
+            </Button>
+            {vocab.length === 0 && <div style={{ color: C.textFaint, fontSize: 12.5, marginTop: 8 }}>Lege zuerst Vokabeln in der Liste an.</div>}
+          </div>
+        );
+      }
+
+      if (phase === "won" || phase === "timeup") {
+        const won = phase === "won";
+        return (
+          <div style={{ maxWidth: 460, margin: "40px auto", textAlign: "center" }}>
+            <Sparkles size={40} color={won ? C.amber : C.textFaint} style={{ marginBottom: 10 }} />
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 24, color: C.text }}>{won ? "Ziel erreicht! 🎉" : "Zeit abgelaufen"}</div>
+            <div style={{ color: C.textMuted, marginTop: 8 }}>
+              {score} von {goal} · {wrong} Fehler{won && ` · noch ${timeLeft}s übrig`}
+            </div>
+            <Button variant="accent" style={{ marginTop: 22 }} onClick={() => setPhase("setup")}><RotateCcw size={16} /> Neues Spiel</Button>
+          </div>
+        );
+      }
+
+      return (
+        <div style={{ maxWidth: 520, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <span style={{ color: C.text, fontWeight: 700, fontSize: 20, fontFamily: "Fraunces, serif" }}>{timeLeft}s</span>
+            <span style={{ color: C.textMuted, fontSize: 13.5 }}>{score} / {goal} richtig</span>
+          </div>
+          <div style={{ height: 6, borderRadius: 999, background: C.surfaceAlt, overflow: "hidden", marginBottom: 20 }}>
+            <div style={{ height: "100%", width: `${timePct}%`, background: timePct < 25 ? C.danger : C.amber, transition: "width 1s linear" }} />
+          </div>
+
+          <div style={{ border: `1px solid ${C.border}`, borderRadius: 14, padding: 14, marginBottom: 18, background: C.surface }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.textFaint, marginBottom: 8 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Target size={13} /> Fortschritt zum Ziel</span>
+              <span>{progressPct}%</span>
+            </div>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {Array.from({ length: goal }).map((_, i) => (
+                <div key={i} style={{
+                  width: 16, height: 22, borderRadius: 3,
+                  background: i < score ? C.accent : C.surfaceAlt,
+                  border: `1px solid ${i < score ? C.accentStrong : C.border}`,
+                  transition: "background .2s ease",
+                }} />
+              ))}
+            </div>
+          </div>
+
+          <div style={{
+            background: flash === "ok" ? C.accentSoft : flash === "no" ? C.dangerSoft : C.surface,
+            border: `1px solid ${flash === "ok" ? C.accent : flash === "no" ? C.danger : C.border}`,
+            borderRadius: 18, padding: 28, transition: "background .2s ease, border-color .2s ease",
+          }}>
+            <div style={{ color: C.textFaint, fontSize: 12.5, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Definition</div>
+            <div style={{ color: C.text, fontSize: 18, whiteSpace: "pre-wrap", lineHeight: 1.5, marginBottom: 20 }}>{current?.definition}</div>
+            <TextInput ref={inputRef} placeholder="Begriff eingeben und Enter drücken …" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} />
+          </div>
+        </div>
+      );
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* App Hauptkomponente                                                */
+    /* ------------------------------------------------------------------ */
+    function App() {
+      const [data, setData] = useState(null);
+      const [loaded, setLoaded] = useState(false);
+      const [tab, setTab] = useState("learn");
+      const [showSubjects, setShowSubjects] = useState(false);
+
+      useEffect(() => {
+        (async () => {
+          try {
+            const res = await window.storage.get(STORAGE_KEY);
+            setData(res && res.value ? JSON.parse(res.value) : defaultData());
+          } catch {
+            setData(defaultData());
+          }
+          setLoaded(true);
+        })();
+      }, []);
+
+      useEffect(() => {
+        if (!loaded || !data) return;
+        const t = setTimeout(() => { window.storage.set(STORAGE_KEY, JSON.stringify(data)).catch(() => {}); }, 400);
+        return () => clearTimeout(t);
+      }, [data, loaded]);
+
+      if (!loaded || !data) {
+        return (
+          <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, fontFamily: "Inter, sans-serif" }}>
+            Lädt …
+          </div>
+        );
+      }
+
+      const currentSubject = data.subjects.find((s) => s.id === data.currentSubjectId) || data.subjects[0];
+      const vocab = data.vocab.filter((v) => v.subjectId === currentSubject?.id);
+
+      function addSubject(name) {
+        const id = uid();
+        setData((d) => ({ ...d, subjects: [...d.subjects, { id, name }], currentSubjectId: id }));
+      }
+      function deleteSubject(id) {
+        setData((d) => {
+          const subjects = d.subjects.filter((s) => s.id !== id);
+          const remainingVocab = d.vocab.filter((v) => v.subjectId !== id);
+          let currentSubjectId = d.currentSubjectId;
+          if (currentSubjectId === id) currentSubjectId = subjects[0]?.id || null;
+          return { ...d, subjects, vocab: remainingVocab, currentSubjectId };
+        });
+      }
+      function switchSubject(id) { setData((d) => ({ ...d, currentSubjectId: id })); }
+      function addVocab(term, definition, box = 1) {
+        if (!term.trim() || !currentSubject) return;
+        setData((d) => ({ ...d, vocab: [...d.vocab, { id: uid(), subjectId: currentSubject.id, term, definition, box, createdAt: Date.now() }] }));
+      }
+      function updateVocab(id, term, definition) {
+        setData((d) => ({ ...d, vocab: d.vocab.map((v) => (v.id === id ? { ...v, term, definition } : v)) }));
+      }
+      function deleteVocabMany(ids) {
+        setData((d) => ({ ...d, vocab: d.vocab.filter((v) => !ids.includes(v.id)) }));
+      }
+      function moveVocabMany(ids, box) {
+        setData((d) => ({ ...d, vocab: d.vocab.map((v) => (ids.includes(v.id) ? { ...v, box } : v)) }));
+      }
+      function setVocabBox(id, box) {
+        setData((d) => ({ ...d, vocab: d.vocab.map((v) => (v.id === id ? { ...v, box } : v)) }));
+      }
+
+      const tabs = [
+        { id: "learn", label: "Lernen", icon: Layers },
+        { id: "list", label: "Liste", icon: ListChecks },
+        { id: "expert", label: "Experte", icon: GraduationCap },
+        { id: "game", label: "Spiel", icon: Gamepad2 },
+      ];
+
+      return (
+        <div style={{ minHeight: "100vh", background: `linear-gradient(180deg, ${C.bg}, ${C.bgSoft})`, fontFamily: "Inter, system-ui, sans-serif", color: C.text }}>
+          <div style={{ maxWidth: 880, margin: "0 auto", padding: "24px 18px 60px" }}>
+            {/* Header */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: C.accentSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <BookOpen size={19} color={C.accent} />
+                </div>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 21, fontWeight: 600 }}>Vokabeltrainer</div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div style={{ position: "relative" }}>
+                  <select
+                    value={currentSubject?.id || ""}
+                    onChange={(e) => switchSubject(e.target.value)}
+                    style={{ appearance: "none", background: C.surface, border: `1px solid ${C.border}`, color: C.text, borderRadius: 10, padding: "9px 32px 9px 12px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    {data.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                  <ChevronDown size={14} style={{ position: "absolute", right: 10, top: 12, pointerEvents: "none", color: C.textMuted }} />
+                </div>
+                <Button size="sm" variant="default" onClick={() => setShowSubjects(true)}><Settings size={15} /></Button>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 26, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 5 }}>
+              {tabs.map((t) => {
+                const IconComponent = t.icon;
+                const active = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    style={{
+                      flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      padding: "9px 10px", borderRadius: 8, border: "none", cursor: "pointer",
+                      background: active ? C.accentStrong : "transparent", color: active ? "#0F1512" : C.textMuted,
+                      fontWeight: 600, fontSize: 13.5, transition: "all .15s ease",
+                    }}
+                  >
+                    <IconComponent size={15} /> {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {!currentSubject ? (
+              <div style={{ textAlign: "center", color: C.textMuted, marginTop: 40 }}>
+                Kein Fach vorhanden. <Button variant="accent" style={{ marginTop: 12 }} onClick={() => setShowSubjects(true)}>Fach anlegen</Button>
+              </div>
+            ) : (
+              <>
+                {tab === "learn" && <LearnView vocab={vocab} onSetBox={setVocabBox} />}
+                {tab === "list" && (
+                  <ListView
+                    vocab={vocab}
+                    subjectName={currentSubject.name}
+                    onAdd={addVocab}
+                    onUpdate={updateVocab}
+                    onDeleteMany={deleteVocabMany}
+                    onMoveMany={moveVocabMany}
+                  />
+                )}
+                {tab === "expert" && <ExpertView vocab={vocab} onSetBox={setVocabBox} />}
+                {tab === "game" && <GameView vocab={vocab} />}
+              </>
+            )}
+          </div>
+
+          {showSubjects && (
+            <SubjectModal subjects={data.subjects} onClose={() => setShowSubjects(false)} onAdd={addSubject} onDelete={deleteSubject} />
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
