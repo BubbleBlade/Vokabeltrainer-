@@ -167,18 +167,20 @@
       });
     }
 
-    function DrawerBox({ label, title, count, onClick, active }) {
+    function DrawerBox({ label, title, count, onClick, active, fullWidth }) {
       return e('button', {
         onClick,
         style: {
           textAlign: "left", cursor: "pointer", border: active ? "4px solid #000000" : "3px solid #000000",
-          background: active ? "#F0F0F0" : "#FFFFFF", borderRadius: C.handRadius, padding: 14, flex: "1 1 130px", minWidth: 120, maxWidth: "100%",
-          boxShadow: active ? "6px 8px 0px #000000" : C.boxShadow, transform: active ? "rotate(-1deg) scale(1.02)" : "rotate(0deg)"
+          background: active ? "#F0F0F0" : "#FFFFFF", borderRadius: C.handRadius, padding: 12,
+          width: fullWidth ? "100%" : "auto",
+          boxShadow: active ? "6px 8px 0px #000000" : C.boxShadow, transform: active ? "rotate(-1deg) scale(1.02)" : "rotate(0deg)",
+          display: "flex", flexDirection: "column", justifyContent: "space-between"
         }
       },
         e('div', { style: { fontSize: 13, fontWeight: 700, textTransform: "uppercase", textDecoration: "underline" } }, label),
-        e('div', { style: { fontSize: 28, fontWeight: 700, marginTop: 2 } }, count),
-        title && e('div', { style: { fontSize: 13, color: "#444", marginTop: 2 } }, title)
+        e('div', { style: { fontSize: 26, fontWeight: 700, margin: "4px 0" } }, count),
+        title && e('div', { style: { fontSize: 12, color: "#444" } }, title)
       );
     }
 
@@ -265,15 +267,14 @@
     /* ------------------------------------------------------------------ */
     function LearnView({ vocab, onSetBox }) {
       const counts = [1, 2, 3, 4].map((n) => vocab.filter((v) => v.box === n).length);
-      const [selectedBox, setSelectedBox] = useState("all"); // 'all' oder 1..4
+      const [selectedBox, setSelectedBox] = useState("all"); 
       const [countChoice, setCountChoice] = useState("all");
-      const [mode, setMode] = useState("direct"); // direct, reverse, quiz, pairs
+      const [mode, setMode] = useState("direct");
       const [session, setSession] = useState(null);
 
       function startSession() {
         if (!vocab || vocab.length === 0) return;
 
-        // 1. Wortpool anhand der gewählten Kiste oder aller Kisten ermitteln
         let pool = [];
         if (selectedBox === "all") {
           pool = shuffle(vocab);
@@ -281,12 +282,10 @@
           pool = shuffle(vocab.filter((v) => v.box === Number(selectedBox)));
         }
 
-        // Falls die gezielte Kiste leer ist, greifen wir automatisch auf alle Vokabeln zurück
         if (pool.length === 0) {
           pool = shuffle(vocab);
         }
 
-        // 2. Anzahl festlegen
         let finalCards = [];
         if (countChoice === "all") {
           finalCards = pool;
@@ -482,9 +481,13 @@
 
       return e('div', null,
         e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 14 } }, "1. Wähle eine Kiste aus:"),
-        e('div', { style: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 24 } },
-          e(DrawerBox, { label: "Alle Kisten", title: "Gesamtpool", count: vocab.length, active: selectedBox === "all", onClick: () => setSelectedBox("all") }),
-          counts.map((c, i) => e(DrawerBox, { key: i, label: `Kiste ${i+1}`, title: BOX_LABELS[i], count: c, active: selectedBox === i + 1, onClick: () => setSelectedBox(i + 1) }))
+        
+        /* Kisten-Layout: 4 Kisten oben in gleich großen Spalten + 1 breite Kiste darunter */
+        e('div', { style: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 } },
+          e('div', { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 } },
+            counts.map((c, i) => e(DrawerBox, { key: i, label: `Kiste ${i+1}`, title: BOX_LABELS[i], count: c, active: selectedBox === i + 1, onClick: () => setSelectedBox(i + 1) }))
+          ),
+          e(DrawerBox, { label: "Alle Kisten", title: "Gesamtpool aller Vokabeln", count: vocab.length, active: selectedBox === "all", onClick: () => setSelectedBox("all"), fullWidth: true })
         ),
 
         e('div', { style: { background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: 24, maxWidth: 560, margin: "0 auto", boxShadow: C.boxShadow } },
