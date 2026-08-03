@@ -12,23 +12,31 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
-    * { box-sizing: border-box; }
+    * { 
+      box-sizing: border-box; 
+    }
     body {
       margin: 0;
-      background-color: #1B2320;
-      color: #EAE7DD;
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #f7f7f7;
+      color: #000000;
+      font-family: 'Comic Neue', cursive, sans-serif;
+      font-size: 18px;
     }
     ::selection {
-      background: rgba(131,169,141,0.16);
+      background: #000000;
+      color: #ffffff;
     }
     input[type=checkbox] {
-      accent-color: #5F8A6E;
-      width: 16px;
-      height: 16px;
+      accent-color: #000000;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+    select, button, input, textarea {
+      font-family: inherit;
     }
   </style>
 </head>
@@ -57,7 +65,7 @@
     /* ------------------------------------------------------------------ */
     /* Lucide Icons Wrapper Component                                     */
     /* ------------------------------------------------------------------ */
-    const Icon = ({ name, size = 18, color = "currentColor", style = {} }) => {
+    const Icon = ({ name, size = 20, color = "#000000", style = {} }) => {
       const ref = useRef(null);
 
       useEffect(() => {
@@ -67,7 +75,8 @@
             attrs: {
               width: size,
               height: size,
-              stroke: color
+              stroke: color,
+              'stroke-width': 2.5
             },
             nameAttr: 'data-lucide',
             el: ref.current
@@ -98,28 +107,22 @@
     const Play = (props) => <Icon name="play" {...props} />;
 
     /* ------------------------------------------------------------------ */
-    /* Design tokens – ruhige, augenschonende Waldgrün-Palette            */
+    /* Handgemalte Design-Tokens (Schwarz/Weiß)                           */
     /* ------------------------------------------------------------------ */
     const C = {
-      bg: "#1B2320",
-      bgSoft: "#212B26",
-      surface: "#28322D",
-      surfaceAlt: "#303C35",
-      border: "#3B4941",
-      borderLight: "#4A5A51",
-      text: "#EAE7DD",
-      textMuted: "#96A89D",
-      textFaint: "#6D7E75",
-      accent: "#83A98D",
-      accentStrong: "#5F8A6E",
-      accentSoft: "rgba(131,169,141,0.16)",
-      amber: "#DCA45C",
-      amberSoft: "rgba(220,164,92,0.16)",
-      danger: "#C1685B",
-      dangerSoft: "rgba(193,104,91,0.16)",
-      box: ["#C1685B", "#DCA45C", "#B7C17A", "#83A98D"],
-      boxSoft: ["rgba(193,104,91,0.16)", "rgba(220,164,92,0.16)", "rgba(183,193,122,0.16)", "rgba(131,169,141,0.16)"],
+      bg: "#FFFFFF",
+      bgSoft: "#FAFAFA",
+      surface: "#FFFFFF",
+      border: "#000000",
+      text: "#000000",
+      textMuted: "#444444",
+      textFaint: "#777777",
+      handBorder: "3px solid #000000",
+      handRadius: "255px 15px 225px 15px/15px 225px 15px 255px", // Erzeugt leicht unregelmäßige Ränder
+      handRadiusAlt: "18px 255px 14px 225px/225px 15px 255px 14px",
+      boxShadow: "3px 4px 0px #000000",
     };
+
     const BOX_LABELS = ["Neu / schwer", "Alle 3 Tage", "Wöchentlich", "Gelernt"];
     const STORAGE_KEY = "vokabeltrainer-data-v1";
 
@@ -139,7 +142,7 @@
       return {
         subjects: [{ id: subjectId, name: "Englisch" }],
         vocab: [
-          { id: uid(), subjectId, term: "the journey", definition: "die Reise\n(auch: die Fahrt, der Weg irgendwohin)", box: 1, createdAt: now },
+          { id: uid(), subjectId, term: "the journey", definition: "die Reise\n(auch: die Fahrt)", box: 1, createdAt: now },
           { id: uid(), subjectId, term: "to achieve", definition: "erreichen, erzielen", box: 2, createdAt: now },
           { id: uid(), subjectId, term: "reliable", definition: "verlässlich, zuverlässig", box: 3, createdAt: now },
           { id: uid(), subjectId, term: "the weather", definition: "das Wetter", box: 4, createdAt: now },
@@ -149,7 +152,7 @@
     }
 
     /* ------------------------------------------------------------------ */
-    /* Zwischenablage- / Datei-Import-Parser                               */
+    /* Import/Export Helper                                               */
     /* ------------------------------------------------------------------ */
     function buildExportText(list) {
       return list
@@ -201,17 +204,11 @@
         if (/^(begriff|term|word|vokabel)[;,\t]/i.test(line)) continue;
 
         let parts = [];
-        if (line.includes(";")) {
-          parts = line.split(";");
-        } else if (line.includes("\t")) {
-          parts = line.split("\t");
-        } else if (line.includes(",")) {
-          parts = line.split(",");
-        } else if (line.includes(" - ")) {
-          parts = line.split(" - ");
-        } else if (line.includes(" = ")) {
-          parts = line.split(" = ");
-        }
+        if (line.includes(";")) parts = line.split(";");
+        else if (line.includes("\t")) parts = line.split("\t");
+        else if (line.includes(",")) parts = line.split(",");
+        else if (line.includes(" - ")) parts = line.split(" - ");
+        else if (line.includes(" = ")) parts = line.split(" = ");
 
         if (parts.length >= 2) {
           const term = parts[0].trim();
@@ -226,32 +223,52 @@
     }
 
     /* ------------------------------------------------------------------ */
-    /* Kleine UI-Bausteine                                                */
+    /* Kinder-UI Bausteine (Handgezeichneter Stil)                         */
     /* ------------------------------------------------------------------ */
     function Button({ children, onClick, variant = "default", size = "md", disabled, style, title }) {
       const base = {
-        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
-        borderRadius: 10, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer",
-        border: "1px solid transparent", transition: "all .15s ease", whiteSpace: "nowrap",
-        opacity: disabled ? 0.45 : 1,
+        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+        borderRadius: C.handRadius, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer",
+        border: C.handBorder, transition: "transform .1s ease, box-shadow .1s ease",
+        whiteSpace: "nowrap", opacity: disabled ? 0.45 : 1,
+        boxShadow: C.boxShadow,
+        background: "#FFFFFF",
+        color: "#000000",
+        transform: "rotate(-1deg)",
       };
-      const sizes = { sm: { padding: "6px 10px", fontSize: 13 }, md: { padding: "9px 14px", fontSize: 14 }, lg: { padding: "12px 20px", fontSize: 15 } };
+
+      const sizes = { 
+        sm: { padding: "6px 12px", fontSize: 15 }, 
+        md: { padding: "10px 18px", fontSize: 17 }, 
+        lg: { padding: "14px 24px", fontSize: 20 } 
+      };
+
       const variants = {
-        default: { background: C.surfaceAlt, color: C.text, borderColor: C.border },
-        accent: { background: C.accentStrong, color: "#0F1512" },
-        amber: { background: C.amber, color: "#241A0B" },
-        danger: { background: "transparent", color: C.danger, borderColor: C.dangerSoft },
-        ghost: { background: "transparent", color: C.textMuted },
-        subtle: { background: C.accentSoft, color: C.accent },
+        default: { background: "#FFFFFF", color: "#000000" },
+        accent: { background: "#000000", color: "#FFFFFF" },
+        danger: { background: "#FFFFFF", color: "#000000", borderStyle: "dashed" },
+        ghost: { background: "transparent", border: "2px dashed #000000", boxShadow: "none" },
+        subtle: { background: "#F0F0F0", color: "#000000" },
       };
+
       return (
         <button
           title={title}
           disabled={disabled}
           onClick={onClick}
           style={{ ...base, ...sizes[size], ...variants[variant], ...style }}
-          onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.filter = "brightness(1.12)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+          onMouseEnter={(e) => { 
+            if (!disabled) {
+              e.currentTarget.style.transform = "rotate(1deg) scale(1.03)";
+              e.currentTarget.style.boxShadow = "5px 6px 0px #000000";
+            }
+          }}
+          onMouseLeave={(e) => { 
+            if (!disabled) {
+              e.currentTarget.style.transform = "rotate(-1deg) scale(1)";
+              e.currentTarget.style.boxShadow = C.boxShadow;
+            }
+          }}
         >
           {children}
         </button>
@@ -260,11 +277,11 @@
 
     function Modal({ title, onClose, children, width = 480 }) {
       return (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(10,14,12,0.6)", backdropFilter: "blur(2px)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: width, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontFamily: "Fraunces, serif", fontSize: 19, color: C.text }}>{title}</h3>
-              <button onClick={onClose} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer" }}><X size={20} /></button>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(3px)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: width, background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: 24, boxShadow: "8px 10px 0px #000000" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "2px dashed #000", paddingBottom: 8 }}>
+              <h3 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>{title}</h3>
+              <button onClick={onClose} style={{ background: "none", border: "none", color: "#000", cursor: "pointer" }}><X size={24} /></button>
             </div>
             {children}
           </div>
@@ -278,11 +295,10 @@
           {...props}
           ref={ref}
           style={{
-            width: "100%", background: C.bgSoft, border: `1px solid ${C.border}`, borderRadius: 10,
-            padding: "10px 12px", color: C.text, fontSize: 14, outline: "none", ...(props.style || {}),
+            width: "100%", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius,
+            padding: "10px 14px", color: "#000000", fontSize: 18, outline: "none", boxShadow: "2px 3px 0px #000",
+            ...(props.style || {}),
           }}
-          onFocus={(e) => (e.target.style.borderColor = C.accent)}
-          onBlur={(e) => (e.target.style.borderColor = C.border)}
         />
       );
     });
@@ -292,51 +308,49 @@
         <textarea
           {...props}
           style={{
-            width: "100%", background: C.bgSoft, border: `1px solid ${C.border}`, borderRadius: 10,
-            padding: "10px 12px", color: C.text, fontSize: 14, outline: "none", resize: "vertical",
-            fontFamily: "inherit", lineHeight: 1.5, ...(props.style || {}),
+            width: "100%", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt,
+            padding: "10px 14px", color: "#000000", fontSize: 18, outline: "none", resize: "vertical",
+            fontFamily: "inherit", lineHeight: 1.4, boxShadow: "2px 3px 0px #000", ...(props.style || {}),
           }}
-          onFocus={(e) => (e.target.style.borderColor = C.accent)}
-          onBlur={(e) => (e.target.style.borderColor = C.border)}
         />
       );
     }
 
     /* ------------------------------------------------------------------ */
-    /* Box-Illustration                                                   */
+    /* Gemalte Karton-Boxen                                               */
     /* ------------------------------------------------------------------ */
     function DrawerBox({ index, count, onClick, active }) {
-      const color = C.box[index];
-      const soft = C.boxSoft[index];
-      const visibleCards = Math.min(count, 6);
+      const visibleCards = Math.min(count, 5);
       return (
         <button
           onClick={onClick}
           style={{
-            textAlign: "left", cursor: "pointer", border: `2px solid ${active ? color : C.border}`,
-            background: active ? soft : C.surface, borderRadius: 14, padding: 16, flex: "1 1 200px", minWidth: 160,
-            transition: "all .18s ease", position: "relative", overflow: "hidden", outline: "none"
+            textAlign: "left", cursor: "pointer", 
+            border: active ? "4px solid #000000" : "3px solid #000000",
+            background: active ? "#F0F0F0" : "#FFFFFF", 
+            borderRadius: C.handRadius, 
+            padding: 16, flex: "1 1 180px", minWidth: 150,
+            transition: "all .15s ease", position: "relative", outline: "none",
+            boxShadow: active ? "6px 8px 0px #000000" : C.boxShadow,
+            transform: active ? "rotate(-1deg) scale(1.02)" : "rotate(0deg)"
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.borderColor = color; }}
-          onMouseLeave={(e) => { if (!active) e.currentTarget.style.borderColor = C.border; }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
-              <div style={{ fontSize: 12, letterSpacing: 0.5, color: C.textMuted, textTransform: "uppercase" }}>Box {index + 1}</div>
-              <div style={{ fontFamily: "Fraunces, serif", fontSize: 26, color: C.text, marginTop: 2 }}>{count}</div>
-              <div style={{ fontSize: 12.5, color: C.textFaint, marginTop: 2 }}>{BOX_LABELS[index]}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, textTransform: "uppercase", textDecoration: "underline" }}>Kiste {index + 1}</div>
+              <div style={{ fontSize: 32, fontWeight: 700, marginTop: 2 }}>{count}</div>
+              <div style={{ fontSize: 14, color: C.textMuted, marginTop: 2 }}>{BOX_LABELS[index]}</div>
             </div>
-            <div style={{ position: "relative", width: 46, height: 40 }}>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 20, borderRadius: 6, background: color, opacity: 0.25 }} />
+            
+            {/* Gemalte Kartenstapel-Illustration */}
+            <div style={{ position: "relative", width: 44, height: 44, border: "2px dashed #000", borderRadius: 8, padding: 2 }}>
               {Array.from({ length: visibleCards }).map((_, i) => (
                 <div key={i} style={{
-                  position: "absolute", left: i * 3, bottom: 4 + i * 2.5, width: 30, height: 18, borderRadius: 4,
-                  background: color, opacity: 0.55 + i * 0.07, border: `1px solid ${C.bg}`,
+                  position: "absolute", left: 4 + i * 3, bottom: 4 + i * 4, width: 26, height: 18, 
+                  borderRadius: 4, background: "#FFFFFF", border: "2px solid #000000",
+                  transform: `rotate(${(i % 2 === 0 ? 1 : -1) * (i * 3)}deg)`
                 }} />
               ))}
-              {count > 6 && (
-                <div style={{ position: "absolute", top: -6, right: -4, fontSize: 10, color, fontWeight: 700 }}>+{count - 6}</div>
-              )}
             </div>
           </div>
         </button>
@@ -351,32 +365,31 @@
       const [confirmId, setConfirmId] = useState(null);
       return (
         <Modal title="Fächer verwalten" onClose={onClose}>
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
             <TextInput
-              placeholder="Neues Fach, z. B. Französisch"
+              placeholder="Neues Fach (z. B. Mathe)"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) { onAdd(name.trim()); setName(""); } }}
             />
-            <Button variant="accent" onClick={() => { if (name.trim()) { onAdd(name.trim()); setName(""); } }}><Plus size={16} /> Anlegen</Button>
+            <Button variant="accent" onClick={() => { if (name.trim()) { onAdd(name.trim()); setName(""); } }}><Plus size={18} color="#FFF" /> Neu</Button>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 280, overflowY: "auto" }}>
             {subjects.map((s) => (
-              <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.bgSoft, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px" }}>
-                <span style={{ color: C.text, fontSize: 14 }}>{s.name}</span>
+              <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#FFF", border: "2px solid #000", borderRadius: C.handRadiusAlt, padding: "10px 14px" }}>
+                <span style={{ fontWeight: 700, fontSize: 18 }}>{s.name}</span>
                 {confirmId === s.id ? (
                   <div style={{ display: "flex", gap: 6 }}>
-                    <Button size="sm" variant="danger" onClick={() => { onDelete(s.id); setConfirmId(null); }}>Löschen bestätigen</Button>
-                    <Button size="sm" variant="ghost" onClick={() => setConfirmId(null)}>Abbrechen</Button>
+                    <Button size="sm" variant="danger" onClick={() => { onDelete(s.id); setConfirmId(null); }}>Ja, löschen!</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmId(null)}>Nein</Button>
                   </div>
                 ) : (
-                  <button onClick={() => setConfirmId(s.id)} style={{ background: "none", border: "none", color: C.textFaint, cursor: "pointer" }} title="Fach löschen">
-                    <Trash2 size={16} />
+                  <button onClick={() => setConfirmId(s.id)} style={{ background: "none", border: "none", color: "#000", cursor: "pointer" }} title="Fach löschen">
+                    <Trash2 size={20} />
                   </button>
                 )}
               </div>
             ))}
-            {subjects.length === 0 && <div style={{ color: C.textFaint, fontSize: 13.5 }}>Noch keine Fächer angelegt.</div>}
           </div>
         </Modal>
       );
@@ -398,7 +411,7 @@
           setError("");
           autoPreview(clip);
         } catch {
-          setError("Zwischenablage konnte nicht gelesen werden. Bitte per Strg+V einfügen.");
+          setError("Fehler beim Einfügen.");
         }
       }
 
@@ -428,7 +441,7 @@
       function handleCheck() {
         const parsed = parseImportText(text);
         if (parsed.length === 0) {
-          setError("Es konnte keine Vokabel erkannt werden. Bitte Format prüfen.");
+          setError("Keine Vokabeln erkannt!");
           setPreview(null);
         } else {
           setError("");
@@ -437,52 +450,35 @@
       }
 
       return (
-        <Modal title={`Liste importieren – Fach „${subjectName}“`} onClose={onClose} width={580}>
-          <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-            <Button size="sm" variant="subtle" onClick={pasteFromClipboard}>
-              <ClipboardPaste size={15} /> Aus Zwischenablage einfügen
-            </Button>
-            <Button size="sm" variant="default" onClick={() => fileInputRef.current && fileInputRef.current.click()}>
-              <FileUp size={15} /> CSV / TXT-Datei laden
-            </Button>
+        <Modal title={`Import für „${subjectName}“`} onClose={onClose} width={540}>
+          <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+            <Button size="sm" variant="subtle" onClick={pasteFromClipboard}><ClipboardPaste size={16} /> Einfügen</Button>
+            <Button size="sm" variant="default" onClick={() => fileInputRef.current && fileInputRef.current.click()}><FileUp size={16} /> Datei laden</Button>
             <input type="file" accept=".csv,.txt" ref={fileInputRef} onChange={handleFileUpload} style={{ display: "none" }} />
           </div>
 
           <TextArea
-            rows={8}
-            placeholder="Hier Text oder CSV einfügen (z. B. Haus;house oder BEGRIFF:...)"
+            rows={6}
+            placeholder="Text hier rein... (z. B. Haus; house)"
             value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              setPreview(null);
-            }}
+            onChange={(e) => { setText(e.target.value); setPreview(null); }}
           />
 
-          <details style={{ marginTop: 8, color: C.textFaint, fontSize: 12.5 }}>
-            <summary style={{ cursor: "pointer", color: C.textMuted }}>Unterstützte Formate anzeigen</summary>
-            <div style={{ background: C.bgSoft, padding: 10, borderRadius: 8, marginTop: 6, lineHeight: 1.5 }}>
-              <strong>1. Einfaches Trennzeichen (CSV / Excel):</strong>
-              <pre style={{ margin: "4px 0 8px 0" }}>{`Apfel, apple\nHaus; house\nTisch \t table`}</pre>
-              <strong>2. Block-Format:</strong>
-              <pre style={{ margin: "4px 0 0 0" }}>{`BEGRIFF: Apfel\nDEFINITION: apple\nBOX: 2\n---\nBEGRIFF: Haus\nDEFINITION: house`}</pre>
-            </div>
-          </details>
-
-          {error && <div style={{ color: C.danger, fontSize: 13, marginTop: 8 }}>{error}</div>}
+          {error && <div style={{ color: "#000", fontWeight: 700, marginTop: 8 }}>⚠️ {error}</div>}
           
           {preview && (
-            <div style={{ marginTop: 10, color: C.accent, fontSize: 13.5, fontWeight: 600 }}>
-              ✓ {preview.length} Vokabel{preview.length === 1 ? "" : "n"} erkannt – bereit zum Import in „{subjectName}“.
+            <div style={{ marginTop: 10, fontWeight: 700 }}>
+              ✏️ {preview.length} Vokabel(n) bereit zum Importieren!
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}>
             <Button variant="ghost" onClick={onClose}>Abbrechen</Button>
             {!preview ? (
               <Button variant="default" onClick={handleCheck}>Prüfen</Button>
             ) : (
               <Button variant="accent" onClick={() => { onImport(preview); onClose(); }}>
-                <Check size={16} /> {preview.length} Vokabeln übernehmen
+                <Check size={18} color="#FFF" /> Speichern
               </Button>
             )}
           </div>
@@ -501,8 +497,6 @@
       const [search, setSearch] = useState("");
       const [boxFilter, setBoxFilter] = useState("all");
       const [showImport, setShowImport] = useState(false);
-      const [exportFallback, setExportFallback] = useState(null);
-      const [copyMsg, setCopyMsg] = useState("");
 
       const filtered = useMemo(() => {
         return vocab.filter((v) => {
@@ -528,102 +522,68 @@
         setEditId(v.id); setTerm(v.term); setDefinition(v.definition);
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
-      async function handleExport() {
-        const listToExport = selected.size > 0 ? vocab.filter((v) => selected.has(v.id)) : vocab;
-        const text = buildExportText(listToExport);
-        try {
-          await navigator.clipboard.writeText(text);
-          setCopyMsg(`${listToExport.length} Vokabel${listToExport.length === 1 ? "" : "n"} kopiert!`);
-          setExportFallback(null);
-          setTimeout(() => setCopyMsg(""), 2500);
-        } catch {
-          setExportFallback(text);
-        }
-      }
 
       return (
         <div>
-          {/* Formular */}
-          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 16, marginBottom: 20 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <span style={{ fontSize: 13, color: C.textMuted, fontWeight: 600 }}>
-                {editId ? "Vokabel bearbeiten" : `Neue Vokabel in „${subjectName}“`}
-              </span>
-              {!editId && (
-                <Button size="sm" variant="subtle" onClick={() => setShowImport(true)}>
-                  <FileUp size={14} /> Vokabeln importieren
-                </Button>
-              )}
+          {/* Eingabefeld */}
+          <div style={{ background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: 20, marginBottom: 24, boxShadow: C.boxShadow }}>
+            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
+              {editId ? "✏️ Vokabel ändern" : `➕ Neue Vokabel für „${subjectName}“`}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <TextInput placeholder="Begriff (z. B. reliable)" value={term} onChange={(e) => setTerm(e.target.value)} />
-              <TextArea placeholder="Definition / Übersetzung (mehrzeilig möglich)" rows={3} value={definition} onChange={(e) => setDefinition(e.target.value)} />
-              <div style={{ display: "flex", gap: 8 }}>
-                <Button variant="accent" onClick={submit}>{editId ? <><Check size={16} /> Speichern</> : <><Plus size={16} /> Hinzufügen</>}</Button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <TextInput placeholder="Wort (z. B. dog)" value={term} onChange={(e) => setTerm(e.target.value)} />
+              <TextArea placeholder="Bedeutung (z. B. Hund)" rows={2} value={definition} onChange={(e) => setDefinition(e.target.value)} />
+              <div style={{ display: "flex", gap: 10 }}>
+                <Button variant="accent" onClick={submit}>{editId ? <><Check size={18} color="#FFF" /> Speichern</> : <><Plus size={18} color="#FFF" /> Einpacken</>}</Button>
                 {editId && <Button variant="ghost" onClick={() => { setEditId(null); setTerm(""); setDefinition(""); }}>Abbrechen</Button>}
               </div>
             </div>
           </div>
 
-          {/* Toolbar */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}>
+          {/* Suchen & Filter */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 16 }}>
             <div style={{ position: "relative", flex: "1 1 200px" }}>
-              <Search size={15} style={{ position: "absolute", left: 10, top: 11, color: C.textFaint }} />
-              <TextInput placeholder="Suchen …" value={search} onChange={(e) => setSearch(e.target.value)} style={{ paddingLeft: 32 }} />
+              <Search size={18} style={{ position: "absolute", left: 12, top: 12, color: "#000" }} />
+              <TextInput placeholder="Suchen..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ paddingLeft: 38 }} />
             </div>
-            <select value={boxFilter} onChange={(e) => setBoxFilter(e.target.value)} style={{ background: C.bgSoft, border: `1px solid ${C.border}`, color: C.text, borderRadius: 10, padding: "9px 10px", fontSize: 13.5 }}>
-              <option value="all">Alle Boxen</option>
-              {[1, 2, 3, 4].map((n) => <option key={n} value={n}>Box {n}</option>)}
+            <select 
+              value={boxFilter} 
+              onChange={(e) => setBoxFilter(e.target.value)} 
+              style={{ background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: "10px 14px", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "2px 3px 0px #000" }}
+            >
+              <option value="all">Alle Kisten</option>
+              {[1, 2, 3, 4].map((n) => <option key={n} value={n}>Kiste {n}</option>)}
             </select>
-            <Button size="sm" variant="subtle" onClick={handleExport}><ClipboardCopy size={15} /> {selected.size > 0 ? `${selected.size} kopieren` : "Alle kopieren"}</Button>
-            <Button size="sm" variant="subtle" onClick={() => setShowImport(true)}><ClipboardPaste size={15} /> Importieren</Button>
+            <Button size="sm" variant="subtle" onClick={() => setShowImport(true)}><ClipboardPaste size={16} /> Importieren</Button>
           </div>
-          {copyMsg && <div style={{ color: C.accent, fontSize: 13, marginBottom: 8 }}>{copyMsg}</div>}
-          {exportFallback && (
-            <div style={{ marginBottom: 12, background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: 10 }}>
-              <div style={{ fontSize: 12.5, color: C.textMuted, marginBottom: 6 }}>Automatisches Kopieren nicht möglich – bitte manuell markieren und kopieren:</div>
-              <TextArea rows={4} readOnly value={exportFallback} onFocus={(e) => e.target.select()} />
-            </div>
-          )}
 
           {selected.size > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", background: C.accentSoft, border: `1px solid ${C.accent}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
-              <span style={{ color: C.accent, fontSize: 13.5, fontWeight: 600 }}>{selected.size} ausgewählt</span>
-              <ArrowRightLeft size={15} color={C.accent} />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", background: "#F0F0F0", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: 12, marginBottom: 16 }}>
+              <span style={{ fontWeight: 700 }}>{selected.size} ausgewählt:</span>
               {[1, 2, 3, 4].map((n) => (
-                <Button key={n} size="sm" variant="default" onClick={() => { onMoveMany([...selected], n); setSelected(new Set()); }}>→ Box {n}</Button>
+                <Button key={n} size="sm" variant="default" onClick={() => { onMoveMany([...selected], n); setSelected(new Set()); }}>→ Kiste {n}</Button>
               ))}
-              <Button size="sm" variant="danger" onClick={() => { onDeleteMany([...selected]); setSelected(new Set()); }}><Trash2 size={14} /> Löschen</Button>
-              <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Auswahl aufheben</Button>
+              <Button size="sm" variant="danger" onClick={() => { onDeleteMany([...selected]); setSelected(new Set()); }}><Trash2 size={16} /> Löschen</Button>
             </div>
           )}
 
-          {/* Tabelle */}
-          <div style={{ border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: C.surfaceAlt, borderBottom: `1px solid ${C.border}`, fontSize: 12.5, color: C.textMuted, fontWeight: 600 }}>
-              <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleAll} />
-              <div style={{ flex: "1 1 160px" }}>BEGRIFF</div>
-              <div style={{ flex: "2 1 260px" }}>DEFINITION</div>
-              <div style={{ width: 70, textAlign: "center" }}>BOX</div>
-              <div style={{ width: 70 }} />
-            </div>
+          {/* Vokabelliste als gemalte Karten */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {filtered.length === 0 && (
-              <div style={{ padding: 24, textAlign: "center", color: C.textFaint, fontSize: 13.5 }}>
-                {vocab.length === 0 ? "Noch keine Vokabeln in diesem Fach. Oben eine anlegen oder eine Liste importieren." : "Keine Treffer für diesen Filter."}
+              <div style={{ padding: 30, textAlign: "center", border: "2px dashed #000", borderRadius: C.handRadius, background: "#FFF" }}>
+                Noch keine Vokabeln da. Trag oben eine ein! 📝
               </div>
             )}
             {filtered.map((v) => (
-              <div key={v.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", borderBottom: `1px solid ${C.border}`, background: selected.has(v.id) ? C.accentSoft : "transparent" }}>
-                <input type="checkbox" checked={selected.has(v.id)} onChange={() => toggle(v.id)} style={{ marginTop: 4 }} />
-                <div style={{ flex: "1 1 160px", color: C.text, fontWeight: 600, fontSize: 14 }}>{v.term}</div>
-                <div style={{ flex: "2 1 260px", color: C.textMuted, fontSize: 13.5, whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{v.definition}</div>
-                <div style={{ width: 70, textAlign: "center" }}>
-                  <span style={{ display: "inline-block", padding: "3px 8px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: C.boxSoft[v.box - 1], color: C.box[v.box - 1] }}>Box {v.box}</span>
+              <div key={v.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, boxShadow: "2px 3px 0px #000" }}>
+                <input type="checkbox" checked={selected.has(v.id)} onChange={() => toggle(v.id)} />
+                <div style={{ flex: "1 1 140px", fontWeight: 700, fontSize: 19 }}>{v.term}</div>
+                <div style={{ flex: "2 1 200px", fontSize: 18, whiteSpace: "pre-wrap" }}>{v.definition}</div>
+                <div style={{ border: "2px solid #000", padding: "2px 8px", borderRadius: 12, fontSize: 14, fontWeight: 700, background: "#F0F0F0" }}>
+                  Kiste {v.box}
                 </div>
-                <div style={{ width: 70, display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                  <button onClick={() => startEdit(v)} title="Bearbeiten" style={{ background: "none", border: "none", color: C.textFaint, cursor: "pointer" }}><Pencil size={15} /></button>
-                  <button onClick={() => onDeleteMany([v.id])} title="Löschen" style={{ background: "none", border: "none", color: C.textFaint, cursor: "pointer" }}><Trash2 size={15} /></button>
-                </div>
+                <button onClick={() => startEdit(v)} style={{ background: "none", border: "none", cursor: "pointer" }} title="Bearbeiten"><Pencil size={18} /></button>
+                <button onClick={() => onDeleteMany([v.id])} style={{ background: "none", border: "none", cursor: "pointer" }} title="Löschen"><Trash2 size={18} /></button>
               </div>
             ))}
           </div>
@@ -634,12 +594,12 @@
     }
 
     /* ------------------------------------------------------------------ */
-    /* Lernen (Flexibel nach Box & Anzahl mit Auffüll-Funktion)           */
+    /* Lernen                                                             */
     /* ------------------------------------------------------------------ */
     function LearnView({ vocab, onSetBox }) {
       const counts = [1, 2, 3, 4].map((n) => vocab.filter((v) => v.box === n).length);
       const [selectedBox, setSelectedBox] = useState(1);
-      const [countChoice, setCountChoice] = useState("all"); // "5", "10", "20", "50", "all"
+      const [countChoice, setCountChoice] = useState("all");
       const [session, setSession] = useState(null);
 
       function startSession() {
@@ -653,7 +613,6 @@
           if (primaryCards.length >= targetCount) {
             finalCards = primaryCards.slice(0, targetCount);
           } else {
-            // Mit Karten aus anderen Boxen auffüllen
             const otherCards = shuffle(vocab.filter((v) => v.box !== selectedBox));
             const needed = targetCount - primaryCards.length;
             finalCards = [...primaryCards, ...otherCards.slice(0, needed)];
@@ -670,7 +629,6 @@
           correct: 0,
           wrong: 0,
           total: finalCards.length,
-          filledFromOther: finalCards.length > primaryCards.length && countChoice !== "all"
         });
       }
 
@@ -686,27 +644,37 @@
       if (session && session.index < session.queue.length) {
         const card = session.queue[session.index];
         return (
-          <div style={{ maxWidth: 560, margin: "0 auto" }}>
+          <div style={{ maxWidth: 540, margin: "0 auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <span style={{ color: C.textMuted, fontSize: 13 }}>
-                Fokus: Box {session.boxNum} · Karte {session.index + 1} / {session.queue.length}
-                {card.box !== session.boxNum && <span style={{ color: C.amber, marginLeft: 8 }}>(aus Box {card.box} aufgefüllt)</span>}
+              <span style={{ fontSize: 16, fontWeight: 700 }}>
+                Karte {session.index + 1} von {session.queue.length}
               </span>
-              <Button size="sm" variant="ghost" onClick={() => setSession(null)}>Abbrechen</Button>
+              <Button size="sm" variant="ghost" onClick={() => setSession(null)}>Stopp</Button>
             </div>
-            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: 32, minHeight: 220, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-              <div style={{ fontFamily: "Fraunces, serif", fontSize: 28, color: C.text }}>{card.term}</div>
+
+            {/* Die Lernkarte */}
+            <div style={{ 
+              background: "#FFFFFF", border: "4px solid #000000", borderRadius: C.handRadius, 
+              padding: 40, minHeight: 240, display: "flex", flexDirection: "column", 
+              alignItems: "center", justifyContent: "center", textAlign: "center",
+              boxShadow: "6px 8px 0px #000000", transform: "rotate(-1deg)" 
+            }}>
+              <div style={{ fontSize: 34, fontWeight: 700 }}>{card.term}</div>
               {session.revealed && (
-                <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}`, color: C.accent, fontSize: 16.5, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{card.definition}</div>
+                <div style={{ marginTop: 20, paddingTop: 20, borderTop: "3px dashed #000", fontSize: 26, width: "100%", color: "#000" }}>
+                  {card.definition}
+                </div>
               )}
             </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 18 }}>
+
+            {/* Buttons */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 24 }}>
               {!session.revealed ? (
-                <Button variant="accent" size="lg" onClick={() => setSession((s) => ({ ...s, revealed: true }))}>Antwort zeigen</Button>
+                <Button variant="accent" size="lg" onClick={() => setSession((s) => ({ ...s, revealed: true }))}>Umsetzten / Umdrehen 🔄</Button>
               ) : (
                 <>
-                  <Button variant="danger" size="lg" onClick={() => answer(false)}>Nochmal üben</Button>
-                  <Button variant="accent" size="lg" onClick={() => answer(true)}>Kann ich ✓</Button>
+                  <Button variant="danger" size="lg" onClick={() => answer(false)}>Nochmal üben ❌</Button>
+                  <Button variant="accent" size="lg" onClick={() => answer(true)}>Gewusst! ✔️</Button>
                 </>
               )}
             </div>
@@ -716,11 +684,11 @@
 
       if (session && session.index >= session.queue.length) {
         return (
-          <div style={{ maxWidth: 480, margin: "40px auto", textAlign: "center" }}>
-            <Sparkles size={36} color={C.amber} style={{ marginBottom: 10 }} />
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, color: C.text }}>Einheit geschafft!</div>
-            <div style={{ color: C.textMuted, marginTop: 6 }}>{session.correct} gewusst · {session.wrong} wiederholt</div>
-            <Button variant="accent" style={{ marginTop: 20 }} onClick={() => setSession(null)}>Zurück zur Übersicht</Button>
+          <div style={{ maxWidth: 440, margin: "40px auto", textAlign: "center", background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: 30, boxShadow: C.boxShadow }}>
+            <Sparkles size={48} color="#000" style={{ marginBottom: 12 }} />
+            <div style={{ fontSize: 28, fontWeight: 700 }}>Klasse gemacht! 🎉</div>
+            <div style={{ fontSize: 20, marginTop: 10 }}>{session.correct} richtig · {session.wrong} nochmal probiert</div>
+            <Button variant="accent" style={{ marginTop: 24 }} onClick={() => setSession(null)}>Weiter üben</Button>
           </div>
         );
       }
@@ -730,11 +698,11 @@
 
       return (
         <div>
-          <div style={{ color: C.textMuted, fontSize: 14, marginBottom: 16 }}>
-            1. Wähle die gewünschte Haupt-Box zum Üben aus.
+          <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 14 }}>
+            1. Wähle eine Kiste aus:
           </div>
 
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 28 }}>
             {counts.map((c, i) => (
               <DrawerBox
                 key={i}
@@ -746,39 +714,22 @@
             ))}
           </div>
 
-          {/* Konfiguration für die Lern-Session */}
-          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20, maxWidth: 520, margin: "0 auto" }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 12 }}>
-              2. Wie viele Wörter möchtest du üben?
+          <div style={{ background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: 24, maxWidth: 520, margin: "0 auto", boxShadow: C.boxShadow }}>
+            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 14 }}>
+              2. Wie viele Wörter lernen?
             </div>
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-              {["5", "10", "20", "50", "all"].map((val) => {
-                const label = val === "all" ? "Alle aus Box" : `${val} Wörter`;
-                return (
-                  <Button
-                    key={val}
-                    size="sm"
-                    variant={countChoice === val ? "accent" : "default"}
-                    onClick={() => setCountChoice(val)}
-                  >
-                    {label}
-                  </Button>
-                );
-              })}
-            </div>
-
-            {/* Info-Hinweis bezüglich Auffüllung */}
-            <div style={{ fontSize: 13, color: C.textMuted, background: C.bgSoft, padding: "10px 12px", borderRadius: 10, marginBottom: 16, lineHeight: 1.4 }}>
-              {countChoice === "all" ? (
-                <>Es werden alle <strong>{availableInSelected}</strong> Wörter aus Box {selectedBox} abgefragt.</>
-              ) : parseInt(countChoice, 10) <= availableInSelected ? (
-                <>Es werden <strong>{countChoice}</strong> von <strong>{availableInSelected}</strong> Wörtern aus Box {selectedBox} abgefragt.</>
-              ) : (
-                <>
-                  Box {selectedBox} enthält nur {availableInSelected} Wörter. Das System ergänzt automatisch <strong>{parseInt(countChoice, 10) - availableInSelected}</strong> weitere Wörter aus den anderen Boxen (insgesamt {Math.min(parseInt(countChoice, 10), totalVocab)}).
-                </>
-              )}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
+              {["5", "10", "20", "all"].map((val) => (
+                <Button
+                  key={val}
+                  size="sm"
+                  variant={countChoice === val ? "accent" : "default"}
+                  onClick={() => setCountChoice(val)}
+                >
+                  {val === "all" ? "Alle Wörter" : `${val} Wörter`}
+                </Button>
+              ))}
             </div>
 
             <Button
@@ -788,7 +739,7 @@
               onClick={startSession}
               style={{ width: "100%" }}
             >
-              <Play size={18} /> Jetzt lernen starten
+              <Play size={22} color="#FFF" /> Jetzt Starten!
             </Button>
           </div>
         </div>
@@ -824,8 +775,8 @@
 
       if (!loaded || !data) {
         return (
-          <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, fontFamily: "Inter, sans-serif" }}>
-            Lädt …
+          <div style={{ minHeight: "100vh", background: "#FFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700 }}>
+            Wird geladen... ✏️
           </div>
         );
       }
@@ -864,62 +815,52 @@
         setData((d) => ({ ...d, vocab: d.vocab.map((v) => (v.id === id ? { ...v, box } : v)) }));
       }
 
-      const tabs = [
-        { id: "learn", label: "Lernen", icon: Layers },
-        { id: "list", label: "Liste", icon: ListChecks },
-      ];
-
       return (
-        <div style={{ minHeight: "100vh", background: `linear-gradient(180deg, ${C.bg}, ${C.bgSoft})`, fontFamily: "Inter, system-ui, sans-serif", color: C.text }}>
-          <div style={{ maxWidth: 880, margin: "0 auto", padding: "24px 18px 60px" }}>
-            {/* Header */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: C.accentSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <BookOpen size={19} color={C.accent} />
+        <div style={{ minHeight: "100vh", background: "#FFFFFF", padding: "20px 14px 60px" }}>
+          <div style={{ maxWidth: 840, margin: "0 auto" }}>
+            
+            {/* Kopfzeile */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center", justifyContent: "space-between", marginBottom: 24, borderBottom: "3px solid #000", paddingBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ background: "#000", color: "#FFF", padding: 8, borderRadius: C.handRadius }}>
+                  <BookOpen size={28} color="#FFF" />
                 </div>
-                <div style={{ fontFamily: "Fraunces, serif", fontSize: 21, fontWeight: 600 }}>Vokabeltrainer</div>
+                <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.5 }}>Mein Vokabelheft</div>
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <div style={{ position: "relative" }}>
-                  <select
-                    value={currentSubject?.id || ""}
-                    onChange={(e) => switchSubject(e.target.value)}
-                    style={{ appearance: "none", background: C.surface, border: `1px solid ${C.border}`, color: C.text, borderRadius: 10, padding: "9px 32px 9px 12px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-                  >
-                    {data.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                  <ChevronDown size={14} style={{ position: "absolute", right: 10, top: 12, pointerEvents: "none", color: C.textMuted }} />
-                </div>
-                <Button size="sm" variant="default" onClick={() => setShowSubjects(true)}><Settings size={15} /></Button>
+              
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <select
+                  value={currentSubject?.id || ""}
+                  onChange={(e) => switchSubject(e.target.value)}
+                  style={{ background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: "8px 16px", fontSize: 18, fontWeight: 700, cursor: "pointer", boxShadow: "2px 3px 0px #000" }}
+                >
+                  {data.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <Button size="sm" variant="default" onClick={() => setShowSubjects(true)}><Settings size={18} /></Button>
               </div>
             </div>
 
-            {/* Tabs */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 26, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 5 }}>
-              {tabs.map((t) => {
-                const IconComponent = t.icon;
-                const active = tab === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setTab(t.id)}
-                    style={{
-                      flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                      padding: "9px 10px", borderRadius: 8, border: "none", cursor: "pointer",
-                      background: active ? C.accentStrong : "transparent", color: active ? "#0F1512" : C.textMuted,
-                      fontWeight: 600, fontSize: 13.5, transition: "all .15s ease",
-                    }}
-                  >
-                    <IconComponent size={15} /> {t.label}
-                  </button>
-                );
-              })}
+            {/* Navigation (Tabs) */}
+            <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
+              <Button
+                variant={tab === "learn" ? "accent" : "default"}
+                onClick={() => setTab("learn")}
+                style={{ flex: 1 }}
+              >
+                <Layers size={20} color={tab === "learn" ? "#FFF" : "#000"} /> Lernen
+              </Button>
+              <Button
+                variant={tab === "list" ? "accent" : "default"}
+                onClick={() => setTab("list")}
+                style={{ flex: 1 }}
+              >
+                <ListChecks size={20} color={tab === "list" ? "#FFF" : "#000"} /> Vokabel-Liste
+              </Button>
             </div>
 
             {!currentSubject ? (
-              <div style={{ textAlign: "center", color: C.textMuted, marginTop: 40 }}>
-                Kein Fach vorhanden. <Button variant="accent" style={{ marginTop: 12 }} onClick={() => setShowSubjects(true)}>Fach anlegen</Button>
+              <div style={{ textAlign: "center", marginTop: 40 }}>
+                Noch kein Fach da! <Button variant="accent" onClick={() => setShowSubjects(true)}>Fach anlegen</Button>
               </div>
             ) : (
               <>
