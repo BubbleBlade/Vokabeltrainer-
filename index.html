@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vokabeltrainer</title>
   
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,9 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
-    * { 
-      box-sizing: border-box; 
-    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       background-color: #f7f7f7;
@@ -25,31 +22,19 @@
       font-family: 'Comic Neue', cursive, sans-serif;
       font-size: 18px;
     }
-    ::selection {
-      background: #000000;
-      color: #ffffff;
-    }
-    input[type=checkbox] {
-      accent-color: #000000;
-      width: 20px;
-      height: 20px;
-      cursor: pointer;
-    }
-    select, button, input, textarea {
-      font-family: inherit;
-    }
+    ::selection { background: #000000; color: #ffffff; }
+    input[type=checkbox] { accent-color: #000000; width: 20px; height: 20px; cursor: pointer; }
+    select, button, input, textarea { font-family: inherit; }
   </style>
 </head>
 <body>
 
   <div id="root"></div>
 
-  <script type="text/babel">
+  <script>
+    const e = React.createElement;
     const { useState, useEffect, useRef, useMemo, forwardRef } = React;
 
-    /* ------------------------------------------------------------------ */
-    /* Polyfill für window.storage (LocalStorage Fallback)                */
-    /* ------------------------------------------------------------------ */
     if (!window.storage) {
       window.storage = {
         async get(key) {
@@ -62,60 +47,38 @@
       };
     }
 
-    /* ------------------------------------------------------------------ */
-    /* Lucide Icons Wrapper Component                                     */
-    /* ------------------------------------------------------------------ */
     const Icon = ({ name, size = 20, color = "#000000", style = {} }) => {
       const ref = useRef(null);
-
       useEffect(() => {
         if (ref.current && window.lucide) {
           ref.current.innerHTML = `<i data-lucide="${name}"></i>`;
           window.lucide.createIcons({
-            attrs: {
-              width: size,
-              height: size,
-              stroke: color,
-              'stroke-width': 2.5
-            },
+            attrs: { width: size, height: size, stroke: color, 'stroke-width': 2.5 },
             nameAttr: 'data-lucide',
             el: ref.current
           });
         }
       }, [name, size, color]);
-
-      return <span ref={ref} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', ...style }} />;
+      return e('span', { ref, style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', ...style } });
     };
 
-    /* Icon Shortcuts */
-    const Plus = (props) => <Icon name="plus" {...props} />;
-    const Trash2 = (props) => <Icon name="trash-2" {...props} />;
-    const ArrowRightLeft = (props) => <Icon name="arrow-right-left" {...props} />;
-    const BookOpen = (props) => <Icon name="book-open" {...props} />;
-    const ClipboardPaste = (props) => <Icon name="clipboard-paste" {...props} />;
-    const Download = (props) => <Icon name="download" {...props} />;
-    const FileUp = (props) => <Icon name="file-up" {...props} />;
-    const X = (props) => <Icon name="x" {...props} />;
-    const Check = (props) => <Icon name="check" {...props} />;
-    const Settings = (props) => <Icon name="settings" {...props} />;
-    const Layers = (props) => <Icon name="layers" {...props} />;
-    const Pencil = (props) => <Icon name="pencil" {...props} />;
-    const Search = (props) => <Icon name="search" {...props} />;
-    const Sparkles = (props) => <Icon name="sparkles" {...props} />;
-    const ListChecks = (props) => <Icon name="list-checks" {...props} />;
-    const Play = (props) => <Icon name="play" {...props} />;
+    const Plus = (props) => e(Icon, { name: "plus", ...props });
+    const Trash2 = (props) => e(Icon, { name: "trash-2", ...props });
+    const BookOpen = (props) => e(Icon, { name: "book-open", ...props });
+    const ClipboardPaste = (props) => e(Icon, { name: "clipboard-paste", ...props });
+    const Download = (props) => e(Icon, { name: "download", ...props });
+    const FileUp = (props) => e(Icon, { name: "file-up", ...props });
+    const X = (props) => e(Icon, { name: "x", ...props });
+    const Check = (props) => e(Icon, { name: "check", ...props });
+    const Settings = (props) => e(Icon, { name: "settings", ...props });
+    const Layers = (props) => e(Icon, { name: "layers", ...props });
+    const Pencil = (props) => e(Icon, { name: "pencil", ...props });
+    const Search = (props) => e(Icon, { name: "search", ...props });
+    const Sparkles = (props) => e(Icon, { name: "sparkles", ...props });
+    const ListChecks = (props) => e(Icon, { name: "list-checks", ...props });
+    const Play = (props) => e(Icon, { name: "play", ...props });
 
-    /* ------------------------------------------------------------------ */
-    /* Handgemalte Design-Tokens (Schwarz/Weiß)                           */
-    /* ------------------------------------------------------------------ */
     const C = {
-      bg: "#FFFFFF",
-      bgSoft: "#FAFAFA",
-      surface: "#FFFFFF",
-      border: "#000000",
-      text: "#000000",
-      textMuted: "#444444",
-      textFaint: "#777777",
       handBorder: "3px solid #000000",
       handRadius: "255px 15px 225px 15px/15px 225px 15px 255px",
       handRadiusAlt: "18px 255px 14px 225px/225px 15px 255px 14px",
@@ -141,29 +104,26 @@
       return {
         subjects: [{ id: subjectId, name: "Englisch" }],
         vocab: [
-          { id: uid(), subjectId, term: "the journey", definition: "die Reise\n(auch: die Fahrt)", box: 1, createdAt: now },
-          { id: uid(), subjectId, term: "to achieve", definition: "erreichen, erzielen", box: 2, createdAt: now },
-          { id: uid(), subjectId, term: "reliable", definition: "verlässlich, zuverlässig", box: 3, createdAt: now },
+          { id: uid(), subjectId, term: "the journey", definition: "die Reise", box: 1, createdAt: now },
+          { id: uid(), subjectId, term: "to achieve", definition: "erreichen", box: 2, createdAt: now },
+          { id: uid(), subjectId, term: "reliable", definition: "verlässlich", box: 3, createdAt: now },
           { id: uid(), subjectId, term: "the weather", definition: "das Wetter", box: 4, createdAt: now },
         ],
         currentSubjectId: subjectId,
       };
     }
 
-    /* Helper zum Herunterladen als echte CSV-Datei */
     function downloadCSV(vocabList, filename = "vokabeln.csv") {
-      let csvContent = "\uFEFFWort;Bedeutung;Kiste\n"; // UTF-8 BOM für Excel
+      let csvContent = "\uFEFFWort;Bedeutung;Kiste\n";
       vocabList.forEach((v) => {
         const cleanTerm = `"${(v.term || "").replace(/"/g, '""')}"`;
         const cleanDef = `"${(v.definition || "").replace(/"/g, '""')}"`;
         csvContent += `${cleanTerm};${cleanDef};${v.box}\n`;
       });
-
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", filename);
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -171,50 +131,15 @@
 
     function parseImportText(text) {
       if (!text || !text.trim()) return [];
-      
-      if (/BEGRIFF:/i.test(text)) {
-        const blocks = text.split(/\n?-{3,}\n?/).map((b) => b.trim()).filter(Boolean);
-        const results = [];
-        for (const block of blocks) {
-          const lines = block.split("\n");
-          let term = "";
-          let definition = [];
-          let box = 1;
-          let mode = null;
-          for (const raw of lines) {
-            const line = raw;
-            if (/^BEGRIFF:/i.test(line)) {
-              term = line.replace(/^BEGRIFF:/i, "").trim();
-              mode = null;
-            } else if (/^DEFINITION:/i.test(line)) {
-              const rest = line.replace(/^DEFINITION:/i, "").trim();
-              if (rest) definition.push(rest);
-              mode = "def";
-            } else if (/^BOX:/i.test(line)) {
-              const n = parseInt(line.replace(/^BOX:/i, "").trim(), 10);
-              if (n >= 1 && n <= 4) box = n;
-              mode = null;
-            } else if (mode === "def") {
-              definition.push(line);
-            }
-          }
-          if (term) results.push({ term, definition: definition.join("\n").trim(), box });
-        }
-        if (results.length > 0) return results;
-      }
-
       const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
       const results = [];
-
       for (const line of lines) {
         if (/^(begriff|term|word|vokabel|wort)[;,\t]/i.test(line)) continue;
-
         let parts = [];
         if (line.includes(";")) parts = line.split(";");
         else if (line.includes("\t")) parts = line.split("\t");
         else if (line.includes(",")) parts = line.split(",");
         else if (line.includes(" - ")) parts = line.split(" - ");
-        else if (line.includes(" = ")) parts = line.split(" = ");
 
         if (parts.length >= 2) {
           const term = parts[0].replace(/^"/, '').replace(/"$/, '').trim();
@@ -224,36 +149,25 @@
             const parsedBox = parseInt(parts[2].trim(), 10);
             if (parsedBox >= 1 && parsedBox <= 4) box = parsedBox;
           }
-          if (term && definition) {
-            results.push({ term, definition, box });
-          }
+          if (term && definition) results.push({ term, definition, box });
         }
       }
-
       return results;
     }
 
-    /* ------------------------------------------------------------------ */
-    /* Kinder-UI Bausteine                                                */
-    /* ------------------------------------------------------------------ */
     function Button({ children, onClick, variant = "default", size = "md", disabled, style, title }) {
       const base = {
         display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
         borderRadius: C.handRadius, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer",
         border: C.handBorder, transition: "transform .1s ease, box-shadow .1s ease",
-        whiteSpace: "nowrap", opacity: disabled ? 0.45 : 1,
-        boxShadow: C.boxShadow,
-        background: "#FFFFFF",
-        color: "#000000",
-        transform: "rotate(-1deg)",
+        whiteSpace: "nowrap", opacity: disabled ? 0.45 : 1, boxShadow: C.boxShadow,
+        background: "#FFFFFF", color: "#000000", transform: "rotate(-1deg)",
       };
-
       const sizes = { 
         sm: { padding: "6px 12px", fontSize: 15 }, 
         md: { padding: "10px 18px", fontSize: 17 }, 
         lg: { padding: "14px 24px", fontSize: 20 } 
       };
-
       const variants = {
         default: { background: "#FFFFFF", color: "#000000" },
         accent: { background: "#000000", color: "#FFFFFF" },
@@ -261,244 +175,59 @@
         ghost: { background: "transparent", border: "2px dashed #000000", boxShadow: "none" },
         subtle: { background: "#F0F0F0", color: "#000000" },
       };
-
-      return (
-        <button
-          title={title}
-          disabled={disabled}
-          onClick={onClick}
-          style={{ ...base, ...sizes[size], ...variants[variant], ...style }}
-          onMouseEnter={(e) => { 
-            if (!disabled) {
-              e.currentTarget.style.transform = "rotate(1deg) scale(1.03)";
-              e.currentTarget.style.boxShadow = "5px 6px 0px #000000";
-            }
-          }}
-          onMouseLeave={(e) => { 
-            if (!disabled) {
-              e.currentTarget.style.transform = "rotate(-1deg) scale(1)";
-              e.currentTarget.style.boxShadow = C.boxShadow;
-            }
-          }}
-        >
-          {children}
-        </button>
-      );
+      return e('button', {
+        title, disabled, onClick,
+        style: { ...base, ...sizes[size], ...variants[variant], ...style },
+        onMouseEnter: (ev) => { if (!disabled) { ev.currentTarget.style.transform = "rotate(1deg) scale(1.03)"; ev.currentTarget.style.boxShadow = "5px 6px 0px #000000"; } },
+        onMouseLeave: (ev) => { if (!disabled) { ev.currentTarget.style.transform = "rotate(-1deg) scale(1)"; ev.currentTarget.style.boxShadow = C.boxShadow; } }
+      }, children);
     }
 
     function Modal({ title, onClose, children, width = 480 }) {
-      return (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(3px)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: width, background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: 24, boxShadow: "8px 10px 0px #000000" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "2px dashed #000", paddingBottom: 8 }}>
-              <h3 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>{title}</h3>
-              <button onClick={onClose} style={{ background: "none", border: "none", color: "#000", cursor: "pointer" }}><X size={24} /></button>
-            </div>
-            {children}
-          </div>
-        </div>
-      );
+      return e('div', {
+        style: { position: "fixed", inset: 0, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(3px)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 },
+        onClick: onClose
+      }, e('div', {
+        onClick: (ev) => ev.stopPropagation(),
+        style: { width: "100%", maxWidth: width, background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: 24, boxShadow: "8px 10px 0px #000000" }
+      }, 
+        e('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "2px dashed #000", paddingBottom: 8 } },
+          e('h3', { style: { margin: 0, fontSize: 24, fontWeight: 700 } }, title),
+          e('button', { onClick: onClose, style: { background: "none", border: "none", color: "#000", cursor: "pointer" } }, e(X, { size: 24 }))
+        ),
+        children
+      ));
     }
 
     const TextInput = forwardRef(function TextInput(props, ref) {
-      return (
-        <input
-          {...props}
-          ref={ref}
-          style={{
-            width: "100%", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius,
-            padding: "10px 14px", color: "#000000", fontSize: 18, outline: "none", boxShadow: "2px 3px 0px #000",
-            ...(props.style || {}),
-          }}
-        />
-      );
+      return e('input', {
+        ...props, ref,
+        style: { width: "100%", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: "10px 14px", color: "#000000", fontSize: 18, outline: "none", boxShadow: "2px 3px 0px #000", ...(props.style || {}) }
+      });
     });
 
     function TextArea(props) {
-      return (
-        <textarea
-          {...props}
-          style={{
-            width: "100%", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt,
-            padding: "10px 14px", color: "#000000", fontSize: 18, outline: "none", resize: "vertical",
-            fontFamily: "inherit", lineHeight: 1.4, boxShadow: "2px 3px 0px #000", ...(props.style || {}),
-          }}
-        />
-      );
+      return e('textarea', {
+        ...props,
+        style: { width: "100%", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: "10px 14px", color: "#000000", fontSize: 18, outline: "none", resize: "vertical", fontFamily: "inherit", lineHeight: 1.4, boxShadow: "2px 3px 0px #000", ...(props.style || {}) }
+      });
     }
 
-    /* ------------------------------------------------------------------ */
-    /* Gemalte Karton-Boxen                                               */
-    /* ------------------------------------------------------------------ */
     function DrawerBox({ index, count, onClick, active }) {
-      const visibleCards = Math.min(count, 5);
-      return (
-        <button
-          onClick={onClick}
-          style={{
-            textAlign: "left", cursor: "pointer", 
-            border: active ? "4px solid #000000" : "3px solid #000000",
-            background: active ? "#F0F0F0" : "#FFFFFF", 
-            borderRadius: C.handRadius, 
-            padding: 16, flex: "1 1 180px", minWidth: 150,
-            transition: "all .15s ease", position: "relative", outline: "none",
-            boxShadow: active ? "6px 8px 0px #000000" : C.boxShadow,
-            transform: active ? "rotate(-1deg) scale(1.02)" : "rotate(0deg)"
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, textTransform: "uppercase", textDecoration: "underline" }}>Kiste {index + 1}</div>
-              <div style={{ fontSize: 32, fontWeight: 700, marginTop: 2 }}>{count}</div>
-              <div style={{ fontSize: 14, color: C.textMuted, marginTop: 2 }}>{BOX_LABELS[index]}</div>
-            </div>
-            
-            <div style={{ position: "relative", width: 44, height: 44, border: "2px dashed #000", borderRadius: 8, padding: 2 }}>
-              {Array.from({ length: visibleCards }).map((_, i) => (
-                <div key={i} style={{
-                  position: "absolute", left: 4 + i * 3, bottom: 4 + i * 4, width: 26, height: 18, 
-                  borderRadius: 4, background: "#FFFFFF", border: "2px solid #000000",
-                  transform: `rotate(${(i % 2 === 0 ? 1 : -1) * (i * 3)}deg)`
-                }} />
-              ))}
-            </div>
-          </div>
-        </button>
+      return e('button', {
+        onClick,
+        style: {
+          textAlign: "left", cursor: "pointer", border: active ? "4px solid #000000" : "3px solid #000000",
+          background: active ? "#F0F0F0" : "#FFFFFF", borderRadius: C.handRadius, padding: 16, flex: "1 1 180px", minWidth: 150,
+          boxShadow: active ? "6px 8px 0px #000000" : C.boxShadow, transform: active ? "rotate(-1deg) scale(1.02)" : "rotate(0deg)"
+        }
+      },
+        e('div', { style: { fontSize: 14, fontWeight: 700, textTransform: "uppercase", textDecoration: "underline" } }, `Kiste ${index + 1}`),
+        e('div', { style: { fontSize: 32, fontWeight: 700, marginTop: 2 } }, count),
+        e('div', { style: { fontSize: 14, color: "#444", marginTop: 2 } }, BOX_LABELS[index])
       );
     }
 
-    /* ------------------------------------------------------------------ */
-    /* Fächer-Verwaltung Modal                                            */
-    /* ------------------------------------------------------------------ */
-    function SubjectModal({ subjects, onClose, onAdd, onDelete }) {
-      const [name, setName] = useState("");
-      const [confirmId, setConfirmId] = useState(null);
-      return (
-        <Modal title="Fächer verwalten" onClose={onClose}>
-          <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-            <TextInput
-              placeholder="Neues Fach (z. B. Mathe)"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) { onAdd(name.trim()); setName(""); } }}
-            />
-            <Button variant="accent" onClick={() => { if (name.trim()) { onAdd(name.trim()); setName(""); } }}><Plus size={18} color="#FFF" /> Neu</Button>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 280, overflowY: "auto" }}>
-            {subjects.map((s) => (
-              <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#FFF", border: "2px solid #000", borderRadius: C.handRadiusAlt, padding: "10px 14px" }}>
-                <span style={{ fontWeight: 700, fontSize: 18 }}>{s.name}</span>
-                {confirmId === s.id ? (
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <Button size="sm" variant="danger" onClick={() => { onDelete(s.id); setConfirmId(null); }}>Ja, löschen!</Button>
-                    <Button size="sm" variant="ghost" onClick={() => setConfirmId(null)}>Nein</Button>
-                  </div>
-                ) : (
-                  <button onClick={() => setConfirmId(s.id)} style={{ background: "none", border: "none", color: "#000", cursor: "pointer" }} title="Fach löschen">
-                    <Trash2 size={20} />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </Modal>
-      );
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* Import Modal                                                       */
-    /* ------------------------------------------------------------------ */
-    function ImportModal({ onClose, onImport, subjectName }) {
-      const [text, setText] = useState("");
-      const [error, setError] = useState("");
-      const [preview, setPreview] = useState(null);
-      const fileInputRef = useRef(null);
-
-      async function pasteFromClipboard() {
-        try {
-          const clip = await navigator.clipboard.readText();
-          setText(clip);
-          setError("");
-          autoPreview(clip);
-        } catch {
-          setError("Fehler beim Einfügen.");
-        }
-      }
-
-      function handleFileUpload(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          const content = evt.target.result;
-          setText(content);
-          setError("");
-          autoPreview(content);
-        };
-        reader.readAsText(file);
-      }
-
-      function autoPreview(content) {
-        const parsed = parseImportText(content);
-        if (parsed.length > 0) {
-          setPreview(parsed);
-          setError("");
-        } else {
-          setPreview(null);
-        }
-      }
-
-      function handleCheck() {
-        const parsed = parseImportText(text);
-        if (parsed.length === 0) {
-          setError("Keine Vokabeln erkannt!");
-          setPreview(null);
-        } else {
-          setError("");
-          setPreview(parsed);
-        }
-      }
-
-      return (
-        <Modal title={`Import für „${subjectName}“`} onClose={onClose} width={540}>
-          <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-            <Button size="sm" variant="subtle" onClick={pasteFromClipboard}><ClipboardPaste size={16} /> Einfügen</Button>
-            <Button size="sm" variant="default" onClick={() => fileInputRef.current && fileInputRef.current.click()}><FileUp size={16} /> Datei laden</Button>
-            <input type="file" accept=".csv,.txt" ref={fileInputRef} onChange={handleFileUpload} style={{ display: "none" }} />
-          </div>
-
-          <TextArea
-            rows={6}
-            placeholder="Text hier rein... (z. B. Wort;Bedeutung;Kiste)"
-            value={text}
-            onChange={(e) => { setText(e.target.value); setPreview(null); }}
-          />
-
-          {error && <div style={{ color: "#000", fontWeight: 700, marginTop: 8 }}>⚠️ {error}</div>}
-          
-          {preview && (
-            <div style={{ marginTop: 10, fontWeight: 700 }}>
-              ✏️ {preview.length} Vokabel(n) bereit zum Importieren!
-            </div>
-          )}
-
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}>
-            <Button variant="ghost" onClick={onClose}>Abbrechen</Button>
-            {!preview ? (
-              <Button variant="default" onClick={handleCheck}>Prüfen</Button>
-            ) : (
-              <Button variant="accent" onClick={() => { onImport(preview); onClose(); }}>
-                <Check size={18} color="#FFF" /> Speichern
-              </Button>
-            )}
-          </div>
-        </Modal>
-      );
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* Liste / Verwalten                                                  */
-    /* ------------------------------------------------------------------ */
     function ListView({ vocab, subjectName, onAdd, onUpdate, onDeleteMany, onMoveMany, onSetBox }) {
       const [term, setTerm] = useState("");
       const [definition, setDefinition] = useState("");
@@ -506,7 +235,6 @@
       const [selected, setSelected] = useState(new Set());
       const [search, setSearch] = useState("");
       const [boxFilter, setBoxFilter] = useState("all");
-      const [showImport, setShowImport] = useState(false);
 
       const filtered = useMemo(() => {
         return vocab.filter((v) => {
@@ -516,17 +244,8 @@
         });
       }, [vocab, search, boxFilter]);
 
-      function toggle(id) {
-        setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-      }
-      
-      function toggleAll() {
-        if (selected.size === filtered.length && filtered.length > 0) {
-          setSelected(new Set());
-        } else {
-          setSelected(new Set(filtered.map((v) => v.id)));
-        }
-      }
+      function toggle(id) { setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
+      function toggleAll() { setSelected(selected.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map((v) => v.id))); }
 
       function submit() {
         if (!term.trim()) return;
@@ -535,164 +254,93 @@
         setTerm(""); setDefinition("");
       }
 
-      function startEdit(v) {
-        setEditId(v.id); setTerm(v.term); setDefinition(v.definition);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-
-      function handleExportCSV() {
-        const listToExport = selected.size > 0 ? vocab.filter((v) => selected.has(v.id)) : vocab;
-        const filename = `vokabeln_${subjectName.toLowerCase().replace(/\s+/g, '_')}.csv`;
-        downloadCSV(listToExport, filename);
-      }
-
-      return (
-        <div>
-          {/* Eingabefeld */}
-          <div style={{ background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: 20, marginBottom: 24, boxShadow: C.boxShadow }}>
-            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
-              {editId ? "✏️ Vokabel ändern" : `➕ Neue Vokabel für „${subjectName}“`}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <TextInput placeholder="Wort (z. B. dog)" value={term} onChange={(e) => setTerm(e.target.value)} />
-              <TextArea placeholder="Bedeutung (z. B. Hund)" rows={2} value={definition} onChange={(e) => setDefinition(e.target.value)} />
-              <div style={{ display: "flex", gap: 10 }}>
-                <Button variant="accent" onClick={submit}>{editId ? <><Check size={18} color="#FFF" /> Speichern</> : <><Plus size={18} color="#FFF" /> Einpacken</>}</Button>
-                {editId && <Button variant="ghost" onClick={() => { setEditId(null); setTerm(""); setDefinition(""); }}>Abbrechen</Button>}
-              </div>
-            </div>
-          </div>
-
-          {/* Suchen & Filter & Export */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 16 }}>
-            <div style={{ position: "relative", flex: "1 1 200px" }}>
-              <Search size={18} style={{ position: "absolute", left: 12, top: 12, color: "#000" }} />
-              <TextInput placeholder="Suchen..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ paddingLeft: 38 }} />
-            </div>
-            
-            <select 
-              value={boxFilter} 
-              onChange={(e) => setBoxFilter(e.target.value)} 
-              style={{ background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: "10px 14px", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "2px 3px 0px #000" }}
-            >
-              <option value="all">Alle Kisten</option>
-              {[1, 2, 3, 4].map((n) => <option key={n} value={n}>Kiste {n}</option>)}
-            </select>
-
-            <Button size="sm" variant="subtle" onClick={handleExportCSV} title="Markierte oder alle Vokabeln als CSV-Datei herunterladen">
-              <Download size={16} /> {selected.size > 0 ? `${selected.size} als CSV` : "Alle als CSV"}
-            </Button>
-            
-            <Button size="sm" variant="subtle" onClick={() => setShowImport(true)}>
-              <ClipboardPaste size={16} /> Importieren
-            </Button>
-          </div>
-
-          {/* Alle markieren / Aktionsleiste */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: "10px 14px", marginBottom: 14 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: 700 }}>
-              <input 
-                type="checkbox" 
-                checked={filtered.length > 0 && selected.size === filtered.length} 
-                onChange={toggleAll} 
-              />
-              Alle markieren ({filtered.length})
-            </label>
-
-            {selected.size > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                <span style={{ fontWeight: 700, fontSize: 15 }}>Verschieben nach:</span>
-                {[1, 2, 3, 4].map((n) => (
-                  <Button key={n} size="sm" variant="default" onClick={() => { onMoveMany([...selected], n); setSelected(new Set()); }}>
-                    Kiste {n}
-                  </Button>
-                ))}
-                <Button size="sm" variant="danger" onClick={() => { onDeleteMany([...selected]); setSelected(new Set()); }}>
-                  <Trash2 size={16} /> Löschen
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Vokabelliste als gemalte Karten */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {filtered.length === 0 && (
-              <div style={{ padding: 30, textAlign: "center", border: "2px dashed #000", borderRadius: C.handRadius, background: "#FFF" }}>
-                Keine Vokabeln gefunden. 📝
-              </div>
-            )}
-            {filtered.map((v) => (
-              <div key={v.id} style={{ 
-                display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", 
-                background: selected.has(v.id) ? "#F0F0F0" : "#FFFFFF", 
-                border: C.handBorder, borderRadius: C.handRadiusAlt, boxShadow: "2px 3px 0px #000" 
-              }}>
-                <input type="checkbox" checked={selected.has(v.id)} onChange={() => toggle(v.id)} />
-                <div style={{ flex: "1 1 140px", fontWeight: 700, fontSize: 19 }}>{v.term}</div>
-                <div style={{ flex: "2 1 180px", fontSize: 18, whiteSpace: "pre-wrap" }}>{v.definition}</div>
-                
-                {/* Einzelne Kisten-Auswahl je Vokabel */}
-                <select 
-                  value={v.box} 
-                  onChange={(e) => onSetBox(v.id, Number(e.target.value))}
-                  style={{ 
-                    border: "2px solid #000", padding: "4px 8px", borderRadius: 12, 
-                    fontSize: 14, fontWeight: 700, background: "#FFF", cursor: "pointer" 
-                  }}
-                  title="In andere Kiste verschieben"
-                >
-                  {[1, 2, 3, 4].map((n) => (
-                    <option key={n} value={n}>Kiste {n}</option>
-                  ))}
-                </select>
-
-                <button onClick={() => startEdit(v)} style={{ background: "none", border: "none", cursor: "pointer" }} title="Bearbeiten"><Pencil size={18} /></button>
-                <button onClick={() => onDeleteMany([v.id])} style={{ background: "none", border: "none", cursor: "pointer" }} title="Löschen"><Trash2 size={18} /></button>
-              </div>
-            ))}
-          </div>
-
-          {showImport && <ImportModal subjectName={subjectName} onClose={() => setShowImport(false)} onImport={(list) => { list.forEach((p) => onAdd(p.term, p.definition, p.box)); }} />}
-        </div>
+      return e('div', null,
+        e('div', { style: { background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: 20, marginBottom: 24, boxShadow: C.boxShadow } },
+          e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 12 } }, editId ? "✏️ Vokabel ändern" : `➕ Neue Vokabel für „${subjectName}“`),
+          e('div', { style: { display: "flex", flexDirection: "column", gap: 12 } },
+            e(TextInput, { placeholder: "Wort (z. B. dog)", value: term, onChange: (ev) => setTerm(ev.target.value) }),
+            e(TextArea, { placeholder: "Bedeutung (z. B. Hund)", rows: 2, value: definition, onChange: (ev) => setDefinition(ev.target.value) }),
+            e('div', { style: { display: "flex", gap: 10 } },
+              e(Button, { variant: "accent", onClick: submit }, editId ? [e(Check, { key: 1, size: 18, color: "#FFF" }), " Speichern"] : [e(Plus, { key: 1, size: 18, color: "#FFF" }), " Einpacken"]),
+              editId && e(Button, { variant: "ghost", onClick: () => { setEditId(null); setTerm(""); setDefinition(""); } }, "Abbrechen")
+            )
+          )
+        ),
+        e('div', { style: { display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 16 } },
+          e('div', { style: { position: "relative", flex: "1 1 200px" } },
+            e(Search, { size: 18, style: { position: "absolute", left: 12, top: 12 } }),
+            e(TextInput, { placeholder: "Suchen...", value: search, onChange: (ev) => setSearch(ev.target.value), style: { paddingLeft: 38 } })
+          ),
+          e('select', {
+            value: boxFilter, onChange: (ev) => setBoxFilter(ev.target.value),
+            style: { background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: "10px 14px", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "2px 3px 0px #000" }
+          }, e('option', { value: "all" }, "Alle Kisten"), [1,2,3,4].map(n => e('option', { key: n, value: n }, `Kiste ${n}`))),
+          e(Button, { size: "sm", variant: "subtle", onClick: () => downloadCSV(selected.size > 0 ? vocab.filter(v => selected.has(v.id)) : vocab, `vokabeln.csv`) }, e(Download, { size: 16 }), " Exportieren")
+        ),
+        e('div', { style: { display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: "10px 14px", marginBottom: 14 } },
+          e('label', { style: { display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: 700 } },
+            e('input', { type: "checkbox", checked: filtered.length > 0 && selected.size === filtered.length, onChange: toggleAll }),
+            `Alle markieren (${filtered.length})`
+          ),
+          selected.size > 0 && e('div', { style: { display: "flex", gap: 8, alignItems: "center" } },
+            e('span', { style: { fontWeight: 700, fontSize: 15 } }, "Verschieben:"),
+            [1,2,3,4].map(n => e(Button, { key: n, size: "sm", onClick: () => { onMoveMany([...selected], n); setSelected(new Set()); } }, `Kist ${n}`)),
+            e(Button, { size: "sm", variant: "danger", onClick: () => { onDeleteMany([...selected]); setSelected(new Set()); } }, e(Trash2, { size: 16 }))
+          )
+        ),
+        e('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
+          filtered.map(v => e('div', {
+            key: v.id,
+            style: { display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: selected.has(v.id) ? "#F0F0F0" : "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, boxShadow: "2px 3px 0px #000" }
+          },
+            e('input', { type: "checkbox", checked: selected.has(v.id), onChange: () => toggle(v.id) }),
+            e('div', { style: { flex: "1 1 140px", fontWeight: 700, fontSize: 19 } }, v.term),
+            e('div', { style: { flex: "2 1 180px", fontSize: 18 } }, v.definition),
+            e('select', { value: v.box, onChange: (ev) => onSetBox(v.id, Number(ev.target.value)), style: { border: "2px solid #000", padding: "4px 8px", borderRadius: 12, fontWeight: 700 } },
+              [1,2,3,4].map(n => e('option', { key: n, value: n }, `Kiste ${n}`))
+            ),
+            e('button', { onClick: () => { setEditId(v.id); setTerm(v.term); setDefinition(v.definition); }, style: { background: "none", border: "none", cursor: "pointer" } }, e(Pencil, { size: 18 })),
+            e('button', { onClick: () => onDeleteMany([v.id]), style: { background: "none", border: "none", cursor: "pointer" } }, e(Trash2, { size: 18 }))
+          ))
+        )
       );
     }
 
     /* ------------------------------------------------------------------ */
-    /* Lernen                                                             */
+    /* Lernen mit den 4 neuen Modi                                        */
     /* ------------------------------------------------------------------ */
     function LearnView({ vocab, onSetBox }) {
       const counts = [1, 2, 3, 4].map((n) => vocab.filter((v) => v.box === n).length);
       const [selectedBox, setSelectedBox] = useState(1);
       const [countChoice, setCountChoice] = useState("all");
+      const [mode, setMode] = useState("direct"); // direct, reverse, quiz, pairs
       const [session, setSession] = useState(null);
 
       function startSession() {
         const primaryCards = shuffle(vocab.filter((v) => v.box === selectedBox));
         let finalCards = [];
 
-        if (countChoice === "all") {
-          finalCards = primaryCards;
-        } else {
-          const targetCount = parseInt(countChoice, 10);
-          if (primaryCards.length >= targetCount) {
-            finalCards = primaryCards.slice(0, targetCount);
-          } else {
-            const otherCards = shuffle(vocab.filter((v) => v.box !== selectedBox));
-            const needed = targetCount - primaryCards.length;
-            finalCards = [...primaryCards, ...otherCards.slice(0, needed)];
+        if (countChoice === "all") finalCards = primaryCards;
+        else {
+          const target = parseInt(countChoice, 10);
+          if (primaryCards.length >= target) finalCards = primaryCards.slice(0, target);
+          else {
+            const others = shuffle(vocab.filter((v) => v.box !== selectedBox));
+            finalCards = [...primaryCards, ...others.slice(0, target - primaryCards.length)];
           }
         }
 
         if (finalCards.length === 0) return;
 
         setSession({
-          boxNum: selectedBox,
+          mode,
           queue: finalCards,
           index: 0,
           revealed: false,
           correct: 0,
           wrong: 0,
-          total: finalCards.length,
+          pairSelectedLeft: null,
+          pairMatchedIds: [],
         });
       }
 
@@ -705,252 +353,232 @@
         }));
       }
 
+      /* Quiz-Optionen für den aktuellen Durchgang aufbauen */
+      const currentQuizOptions = useMemo(() => {
+        if (!session || session.mode !== "quiz" || session.index >= session.queue.length) return [];
+        const card = session.queue[session.index];
+        const otherDefs = vocab.filter(v => v.id !== card.id).map(v => v.definition);
+        const distractors = shuffle(otherDefs).slice(0, 3);
+        
+        while (distractors.length < 3) {
+          distractors.push("—");
+        }
+        return shuffle([card.definition, ...distractors]);
+      }, [session?.index, session?.mode]);
+
+      /* Wortpaare für Wortpaar-Modus vorbereiten */
+      const currentPairs = useMemo(() => {
+        if (!session || session.mode !== "pairs") return { left: [], right: [] };
+        const chunk = session.queue.slice(session.index, session.index + 4);
+        return {
+          left: shuffle(chunk.map(c => ({ id: c.id, text: c.term }))),
+          right: shuffle(chunk.map(c => ({ id: c.id, text: c.definition })))
+        };
+      }, [session?.index, session?.mode]);
+
+      /* Paarzuordnungs-Handler */
+      function handlePairClick(type, item) {
+        if (type === "left") {
+          setSession(s => ({ ...s, pairSelectedLeft: item }));
+        } else if (type === "right" && session.pairSelectedLeft) {
+          if (session.pairSelectedLeft.id === item.id) {
+            onSetBox(item.id, Math.min((vocab.find(v=>v.id===item.id)?.box || 1) + 1, 4));
+            const newMatched = [...session.pairMatchedIds, item.id];
+            
+            if (newMatched.length >= Math.min(4, session.queue.length - session.index)) {
+              setSession(s => ({
+                ...s, index: s.index + 4, correct: s.correct + newMatched.length,
+                pairSelectedLeft: null, pairMatchedIds: []
+              }));
+            } else {
+              setSession(s => ({ ...s, pairMatchedIds: newMatched, pairSelectedLeft: null }));
+            }
+          } else {
+            onSetBox(session.pairSelectedLeft.id, 1);
+            setSession(s => ({ ...s, wrong: s.wrong + 1, pairSelectedLeft: null }));
+          }
+        }
+      }
+
+      /* LAUFENDE SESSION ANZEIGEN */
       if (session && session.index < session.queue.length) {
         const card = session.queue[session.index];
-        return (
-          <div style={{ maxWidth: 540, margin: "0 auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <span style={{ fontSize: 16, fontWeight: 700 }}>
-                Karte {session.index + 1} von {session.queue.length}
-              </span>
-              <Button size="sm" variant="ghost" onClick={() => setSession(null)}>Stopp</Button>
-            </div>
 
-            <div style={{ 
-              background: "#FFFFFF", border: "4px solid #000000", borderRadius: C.handRadius, 
-              padding: 40, minHeight: 240, display: "flex", flexDirection: "column", 
-              alignItems: "center", justifyContent: "center", textAlign: "center",
-              boxShadow: "6px 8px 0px #000000", transform: "rotate(-1deg)" 
-            }}>
-              <div style={{ fontSize: 34, fontWeight: 700 }}>{card.term}</div>
-              {session.revealed && (
-                <div style={{ marginTop: 20, paddingTop: 20, borderTop: "3px dashed #000", fontSize: 26, width: "100%", color: "#000" }}>
-                  {card.definition}
-                </div>
-              )}
-            </div>
+        return e('div', { style: { maxWidth: 580, margin: "0 auto" } },
+          e('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 } },
+            e('span', { style: { fontSize: 16, fontWeight: 700 } }, `Karte ${session.index + 1} von ${session.queue.length}`),
+            e(Button, { size: "sm", variant: "ghost", onClick: () => setSession(null) }, "Stopp")
+          ),
 
-            <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 24 }}>
-              {!session.revealed ? (
-                <Button variant="accent" size="lg" onClick={() => setSession((s) => ({ ...s, revealed: true }))}>Umdrehen 🔄</Button>
-              ) : (
-                <>
-                  <Button variant="danger" size="lg" onClick={() => answer(false)}>Nochmal üben ❌</Button>
-                  <Button variant="accent" size="lg" onClick={() => answer(true)}>Gewusst! ✔️</Button>
-                </>
-              )}
-            </div>
-          </div>
+          /* MODUS 1 & 2: Klassische Karten (Hin / Rück) */
+          (session.mode === "direct" || session.mode === "reverse") && e('div', null,
+            e('div', {
+              style: {
+                background: "#FFFFFF", border: "4px solid #000000", borderRadius: C.handRadius,
+                padding: 30, minHeight: 200, display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center", textAlign: "center",
+                boxShadow: "6px 8px 0px #000000"
+              }
+            },
+              e('div', { style: { fontSize: 32, fontWeight: 700 } }, session.mode === "direct" ? card.term : card.definition),
+              session.revealed && e('div', { style: { marginTop: 20, paddingTop: 20, borderTop: "3px dashed #000", fontSize: 26, width: "100%" } },
+                session.mode === "direct" ? card.definition : card.term
+              )
+            ),
+            e('div', { style: { display: "flex", justifyContent: "center", gap: 14, marginTop: 20 } },
+              !session.revealed ? e(Button, { variant: "accent", size: "lg", onClick: () => setSession(s => ({ ...s, revealed: true })) }, "Umdrehen 🔄")
+              : [
+                e(Button, { key: 1, variant: "danger", size: "lg", onClick: () => answer(false) }, "Nochmal ❌"),
+                e(Button, { key: 2, variant: "accent", size: "lg", onClick: () => answer(true) }, "Gewusst! ✔️")
+              ]
+            )
+          ),
+
+          /* MODUS 3: Ratemodus / Quiz */
+          session.mode === "quiz" && e('div', null,
+            e('div', { style: { background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: 24, textAlign: "center", marginBottom: 20, boxShadow: C.boxShadow } },
+              e('div', { style: { fontSize: 16, color: "#666" } }, "Wie lautet die richtige Übersetzung?"),
+              e('div', { style: { fontSize: 30, fontWeight: 700, marginTop: 6 } }, card.term)
+            ),
+            e('div', { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } },
+              currentQuizOptions.map((opt, idx) => e(Button, {
+                key: idx, variant: "default", size: "md",
+                onClick: () => {
+                  const isCorrect = opt === card.definition;
+                  answer(isCorrect);
+                }
+              }, opt))
+            )
+          ),
+
+          /* MODUS 4: Wortpaare */
+          session.mode === "pairs" && e('div', null,
+            e('div', { style: { textAlign: "center", fontWeight: 700, marginBottom: 12 } }, "Klicke erst ein Wort links und dann die passende Übersetzung rechts an:"),
+            e('div', { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 } },
+              e('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
+                currentPairs.left.map(item => {
+                  const isMatched = session.pairMatchedIds.includes(item.id);
+                  const isSelected = session.pairSelectedLeft?.id === item.id;
+                  if (isMatched) return null;
+                  return e(Button, {
+                    key: item.id,
+                    variant: isSelected ? "accent" : "default",
+                    onClick: () => handlePairClick("type", item) || handlePairClick("left", item)
+                  }, item.text);
+                })
+              ),
+              e('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
+                currentPairs.right.map(item => {
+                  const isMatched = session.pairMatchedIds.includes(item.id);
+                  if (isMatched) return null;
+                  return e(Button, {
+                    key: item.id,
+                    variant: "default",
+                    onClick: () => handlePairClick("right", item)
+                  }, item.text);
+                })
+              )
+            )
+          )
         );
       }
 
+      /* SESSION FERTIG */
       if (session && session.index >= session.queue.length) {
-        return (
-          <div style={{ maxWidth: 440, margin: "40px auto", textAlign: "center", background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: 30, boxShadow: C.boxShadow }}>
-            <Sparkles size={48} color="#000" style={{ marginBottom: 12 }} />
-            <div style={{ fontSize: 28, fontWeight: 700 }}>Klasse gemacht! 🎉</div>
-            <div style={{ fontSize: 20, marginTop: 10 }}>{session.correct} richtig · {session.wrong} nochmal probiert</div>
-            <Button variant="accent" style={{ marginTop: 24 }} onClick={() => setSession(null)}>Weiter üben</Button>
-          </div>
+        return e('div', { style: { maxWidth: 440, margin: "40px auto", textAlign: "center", background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: 30, boxShadow: C.boxShadow } },
+          e(Sparkles, { size: 48, style: { marginBottom: 12 } }),
+          e('div', { style: { fontSize: 28, fontWeight: 700 } }, "Klasse gemacht! 🎉"),
+          e('div', { style: { fontSize: 20, marginTop: 10 } }, `${session.correct} richtig · ${session.wrong} falsch`),
+          e(Button, { variant: "accent", style: { marginTop: 24 }, onClick: () => setSession(null) }, "Weiter üben")
         );
       }
 
-      const availableInSelected = counts[selectedBox - 1];
-      const totalVocab = vocab.length;
+      /* KONFIGURATION / EINSTELLUNGEN */
+      return e('div', null,
+        e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 14 } }, "1. Wähle eine Kiste aus:"),
+        e('div', { style: { display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 24 } },
+          counts.map((c, i) => e(DrawerBox, { key: i, index: i, count: c, active: selectedBox === i + 1, onClick: () => setSelectedBox(i + 1) }))
+        ),
 
-      return (
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 14 }}>
-            1. Wähle eine Kiste aus:
-          </div>
+        e('div', { style: { background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: 24, maxWidth: 560, margin: "0 auto", boxShadow: C.boxShadow } },
+          
+          e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 10 } }, "2. Lernmodus auswählen:"),
+          e('div', { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 } },
+            e(Button, { size: "sm", variant: mode === "direct" ? "accent" : "default", onClick: () => setMode("direct") }, "Ausgangs ➔ Ziel"),
+            e(Button, { size: "sm", variant: mode === "reverse" ? "accent" : "default", onClick: () => setMode("reverse") }, "Ziel ➔ Ausgangs"),
+            e(Button, { size: "sm", variant: mode === "quiz" ? "accent" : "default", onClick: () => setMode("quiz") }, "🎯 Ratemodus (Quiz)"),
+            e(Button, { size: "sm", variant: mode === "pairs" ? "accent" : "default", onClick: () => setMode("pairs") }, "🧩 Wortpaare")
+          ),
 
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 28 }}>
-            {counts.map((c, i) => (
-              <DrawerBox
-                key={i}
-                index={i}
-                count={c}
-                active={selectedBox === i + 1}
-                onClick={() => setSelectedBox(i + 1)}
-              />
-            ))}
-          </div>
+          e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 10 } }, "3. Wie viele Wörter?"),
+          e('div', { style: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 24 } },
+            ["5", "10", "20", "all"].map(val => e(Button, {
+              key: val, size: "sm", variant: countChoice === val ? "accent" : "default", onClick: () => setCountChoice(val)
+            }, val === "all" ? "Alle Wörter" : `${val} Wörter`))
+          ),
 
-          <div style={{ background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: 24, maxWidth: 520, margin: "0 auto", boxShadow: C.boxShadow }}>
-            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 14 }}>
-              2. Wie viele Wörter lernen?
-            </div>
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
-              {["5", "10", "20", "all"].map((val) => (
-                <Button
-                  key={val}
-                  size="sm"
-                  variant={countChoice === val ? "accent" : "default"}
-                  onClick={() => setCountChoice(val)}
-                >
-                  {val === "all" ? "Alle Wörter" : `${val} Wörter`}
-                </Button>
-              ))}
-            </div>
-
-            <Button
-              variant="accent"
-              size="lg"
-              disabled={totalVocab === 0 || (countChoice === "all" && availableInSelected === 0)}
-              onClick={startSession}
-              style={{ width: "100%" }}
-            >
-              <Play size={22} color="#FFF" /> Jetzt Starten!
-            </Button>
-          </div>
-        </div>
+          e(Button, { variant: "accent", size: "lg", disabled: vocab.length === 0, onClick: startSession, style: { width: "100%" } },
+            e(Play, { size: 22, color: "#FFF" }), " Jetzt Starten!"
+          )
+        )
       );
     }
 
-    /* ------------------------------------------------------------------ */
-    /* App Hauptkomponente                                                */
-    /* ------------------------------------------------------------------ */
     function App() {
       const [data, setData] = useState(null);
-      const [loaded, setLoaded] = useState(false);
       const [tab, setTab] = useState("learn");
-      const [showSubjects, setShowSubjects] = useState(false);
 
       useEffect(() => {
         (async () => {
           try {
             const res = await window.storage.get(STORAGE_KEY);
             setData(res && res.value ? JSON.parse(res.value) : defaultData());
-          } catch {
-            setData(defaultData());
-          }
-          setLoaded(true);
+          } catch { setData(defaultData()); }
         })();
       }, []);
 
       useEffect(() => {
-        if (!loaded || !data) return;
-        const t = setTimeout(() => { window.storage.set(STORAGE_KEY, JSON.stringify(data)).catch(() => {}); }, 400);
+        if (!data) return;
+        const t = setTimeout(() => { window.storage.set(STORAGE_KEY, JSON.stringify(data)); }, 300);
         return () => clearTimeout(t);
-      }, [data, loaded]);
+      }, [data]);
 
-      if (!loaded || !data) {
-        return (
-          <div style={{ minHeight: "100vh", background: "#FFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700 }}>
-            Wird geladen... ✏️
-          </div>
-        );
-      }
+      if (!data) return e('div', { style: { padding: 40, textAlign: "center", fontWeight: 700 } }, "Wird geladen... ✏️");
 
       const currentSubject = data.subjects.find((s) => s.id === data.currentSubjectId) || data.subjects[0];
       const vocab = data.vocab.filter((v) => v.subjectId === currentSubject?.id);
 
-      function addSubject(name) {
-        const id = uid();
-        setData((d) => ({ ...d, subjects: [...d.subjects, { id, name }], currentSubjectId: id }));
-      }
-      function deleteSubject(id) {
-        setData((d) => {
-          const subjects = d.subjects.filter((s) => s.id !== id);
-          const remainingVocab = d.vocab.filter((v) => v.subjectId !== id);
-          let currentSubjectId = d.currentSubjectId;
-          if (currentSubjectId === id) currentSubjectId = subjects[0]?.id || null;
-          return { ...d, subjects, vocab: remainingVocab, currentSubjectId };
-        });
-      }
-      function switchSubject(id) { setData((d) => ({ ...d, currentSubjectId: id })); }
-      function addVocab(term, definition, box = 1) {
-        if (!term.trim() || !currentSubject) return;
-        setData((d) => ({ ...d, vocab: [...d.vocab, { id: uid(), subjectId: currentSubject.id, term, definition, box, createdAt: Date.now() }] }));
-      }
-      function updateVocab(id, term, definition) {
-        setData((d) => ({ ...d, vocab: d.vocab.map((v) => (v.id === id ? { ...v, term, definition } : v)) }));
-      }
-      function deleteVocabMany(ids) {
-        setData((d) => ({ ...d, vocab: d.vocab.filter((v) => !ids.includes(v.id)) }));
-      }
-      function moveVocabMany(ids, box) {
-        setData((d) => ({ ...d, vocab: d.vocab.map((v) => (ids.includes(v.id) ? { ...v, box } : v)) }));
-      }
-      function setVocabBox(id, box) {
-        setData((d) => ({ ...d, vocab: d.vocab.map((v) => (v.id === id ? { ...v, box } : v)) }));
-      }
-
-      return (
-        <div style={{ minHeight: "100vh", background: "#FFFFFF", padding: "20px 14px 60px" }}>
-          <div style={{ maxWidth: 840, margin: "0 auto" }}>
-            
-            {/* Kopfzeile */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center", justifyContent: "space-between", marginBottom: 24, borderBottom: "3px solid #000", paddingBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ background: "#000", color: "#FFF", padding: 8, borderRadius: C.handRadius }}>
-                  <BookOpen size={28} color="#FFF" />
-                </div>
-                <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.5 }}>Mein Vokabelheft</div>
-              </div>
-              
-              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <select
-                  value={currentSubject?.id || ""}
-                  onChange={(e) => switchSubject(e.target.value)}
-                  style={{ background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: "8px 16px", fontSize: 18, fontWeight: 700, cursor: "pointer", boxShadow: "2px 3px 0px #000" }}
-                >
-                  {data.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-                <Button size="sm" variant="default" onClick={() => setShowSubjects(true)}><Settings size={18} /></Button>
-              </div>
-            </div>
-
-            {/* Navigation (Tabs) */}
-            <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
-              <Button
-                variant={tab === "learn" ? "accent" : "default"}
-                onClick={() => setTab("learn")}
-                style={{ flex: 1 }}
-              >
-                <Layers size={20} color={tab === "learn" ? "#FFF" : "#000"} /> Lernen
-              </Button>
-              <Button
-                variant={tab === "list" ? "accent" : "default"}
-                onClick={() => setTab("list")}
-                style={{ flex: 1 }}
-              >
-                <ListChecks size={20} color={tab === "list" ? "#FFF" : "#000"} /> Vokabel-Liste
-              </Button>
-            </div>
-
-            {!currentSubject ? (
-              <div style={{ textAlign: "center", marginTop: 40 }}>
-                Noch kein Fach da! <Button variant="accent" onClick={() => setShowSubjects(true)}>Fach anlegen</Button>
-              </div>
-            ) : (
-              <>
-                {tab === "learn" && <LearnView vocab={vocab} onSetBox={setVocabBox} />}
-                {tab === "list" && (
-                  <ListView
-                    vocab={vocab}
-                    subjectName={currentSubject.name}
-                    onAdd={addVocab}
-                    onUpdate={updateVocab}
-                    onDeleteMany={deleteVocabMany}
-                    onMoveMany={moveVocabMany}
-                    onSetBox={setVocabBox}
-                  />
-                )}
-              </>
-            )}
-          </div>
-
-          {showSubjects && (
-            <SubjectModal subjects={data.subjects} onClose={() => setShowSubjects(false)} onAdd={addSubject} onDelete={deleteSubject} />
-          )}
-        </div>
+      return e('div', { style: { minHeight: "100vh", background: "#FFFFFF", padding: "20px 14px 60px" } },
+        e('div', { style: { maxWidth: 840, margin: "0 auto" } },
+          e('div', { style: { display: "flex", gap: 14, alignItems: "center", justifyContent: "space-between", marginBottom: 24, borderBottom: "3px solid #000", paddingBottom: 16 } },
+            e('div', { style: { display: "flex", alignItems: "center", gap: 12 } },
+              e('div', { style: { background: "#000", color: "#FFF", padding: 8, borderRadius: C.handRadius } }, e(BookOpen, { size: 28, color: "#FFF" })),
+              e('div', { style: { fontSize: 30, fontWeight: 700 } }, "Mein Vokabelheft")
+            ),
+            e('select', {
+              value: currentSubject?.id || "", onChange: (ev) => setData(d => ({ ...d, currentSubjectId: ev.target.value })),
+              style: { background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: "8px 16px", fontSize: 18, fontWeight: 700 }
+            }, data.subjects.map(s => e('option', { key: s.id, value: s.id }, s.name)))
+          ),
+          e('div', { style: { display: "flex", gap: 10, marginBottom: 28 } },
+            e(Button, { variant: tab === "learn" ? "accent" : "default", onClick: () => setTab("learn"), style: { flex: 1 } }, e(Layers, { size: 20 }), " Lernen"),
+            e(Button, { variant: tab === "list" ? "accent" : "default", onClick: () => setTab("list"), style: { flex: 1 } }, e(ListChecks, { size: 20 }), " Vokabel-Liste")
+          ),
+          tab === "learn" && e(LearnView, { vocab, onSetBox: (id, box) => setData(d => ({ ...d, vocab: d.vocab.map(v => v.id === id ? { ...v, box } : v) })) }),
+          tab === "list" && e(ListView, {
+            vocab, subjectName: currentSubject.name,
+            onAdd: (term, definition) => setData(d => ({ ...d, vocab: [...d.vocab, { id: uid(), subjectId: currentSubject.id, term, definition, box: 1, createdAt: Date.now() }] })),
+            onUpdate: (id, term, definition) => setData(d => ({ ...d, vocab: d.vocab.map(v => v.id === id ? { ...v, term, definition } : v) })),
+            onDeleteMany: (ids) => setData(d => ({ ...d, vocab: d.vocab.filter(v => !ids.includes(v.id)) })),
+            onMoveMany: (ids, box) => setData(d => ({ ...d, vocab: d.vocab.map(v => ids.includes(v.id) ? { ...v, box } : v) })),
+            onSetBox: (id, box) => setData(d => ({ ...d, vocab: d.vocab.map(v => v.id === id ? { ...v, box } : v) }))
+          })
+        )
       );
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    root.render(e(App));
   </script>
 </body>
 </html>
