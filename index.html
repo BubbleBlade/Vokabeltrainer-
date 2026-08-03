@@ -67,10 +67,8 @@
     const BookOpen = (props) => e(Icon, { name: "book-open", ...props });
     const ClipboardPaste = (props) => e(Icon, { name: "clipboard-paste", ...props });
     const Download = (props) => e(Icon, { name: "download", ...props });
-    const FileUp = (props) => e(Icon, { name: "file-up", ...props });
     const X = (props) => e(Icon, { name: "x", ...props });
     const Check = (props) => e(Icon, { name: "check", ...props });
-    const Settings = (props) => e(Icon, { name: "settings", ...props });
     const Layers = (props) => e(Icon, { name: "layers", ...props });
     const Pencil = (props) => e(Icon, { name: "pencil", ...props });
     const Search = (props) => e(Icon, { name: "search", ...props });
@@ -129,39 +127,13 @@
       document.body.removeChild(link);
     }
 
-    function parseImportText(text) {
-      if (!text || !text.trim()) return [];
-      const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-      const results = [];
-      for (const line of lines) {
-        if (/^(begriff|term|word|vokabel|wort)[;,\t]/i.test(line)) continue;
-        let parts = [];
-        if (line.includes(";")) parts = line.split(";");
-        else if (line.includes("\t")) parts = line.split("\t");
-        else if (line.includes(",")) parts = line.split(",");
-        else if (line.includes(" - ")) parts = line.split(" - ");
-
-        if (parts.length >= 2) {
-          const term = parts[0].replace(/^"/, '').replace(/"$/, '').trim();
-          const definition = parts[1].replace(/^"/, '').replace(/"$/, '').trim();
-          let box = 1;
-          if (parts[2]) {
-            const parsedBox = parseInt(parts[2].trim(), 10);
-            if (parsedBox >= 1 && parsedBox <= 4) box = parsedBox;
-          }
-          if (term && definition) results.push({ term, definition, box });
-        }
-      }
-      return results;
-    }
-
     function Button({ children, onClick, variant = "default", size = "md", disabled, style, title }) {
       const base = {
         display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
         borderRadius: C.handRadius, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer",
         border: C.handBorder, transition: "transform .1s ease, box-shadow .1s ease",
-        whiteSpace: "nowrap", opacity: disabled ? 0.45 : 1, boxShadow: C.boxShadow,
-        background: "#FFFFFF", color: "#000000", transform: "rotate(-1deg)",
+        whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere", maxWidth: "100%", opacity: disabled ? 0.45 : 1, boxShadow: C.boxShadow,
+        background: "#FFFFFF", color: "#000000", transform: "rotate(-1deg)", textAlign: "center",
       };
       const sizes = { 
         sm: { padding: "6px 12px", fontSize: 15 }, 
@@ -178,38 +150,22 @@
       return e('button', {
         title, disabled, onClick,
         style: { ...base, ...sizes[size], ...variants[variant], ...style },
-        onMouseEnter: (ev) => { if (!disabled) { ev.currentTarget.style.transform = "rotate(1deg) scale(1.03)"; ev.currentTarget.style.boxShadow = "5px 6px 0px #000000"; } },
+        onMouseEnter: (ev) => { if (!disabled) { ev.currentTarget.style.transform = "rotate(1deg) scale(1.02)"; ev.currentTarget.style.boxShadow = "5px 6px 0px #000000"; } },
         onMouseLeave: (ev) => { if (!disabled) { ev.currentTarget.style.transform = "rotate(-1deg) scale(1)"; ev.currentTarget.style.boxShadow = C.boxShadow; } }
       }, children);
-    }
-
-    function Modal({ title, onClose, children, width = 480 }) {
-      return e('div', {
-        style: { position: "fixed", inset: 0, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(3px)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 },
-        onClick: onClose
-      }, e('div', {
-        onClick: (ev) => ev.stopPropagation(),
-        style: { width: "100%", maxWidth: width, background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: 24, boxShadow: "8px 10px 0px #000000" }
-      }, 
-        e('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "2px dashed #000", paddingBottom: 8 } },
-          e('h3', { style: { margin: 0, fontSize: 24, fontWeight: 700 } }, title),
-          e('button', { onClick: onClose, style: { background: "none", border: "none", color: "#000", cursor: "pointer" } }, e(X, { size: 24 }))
-        ),
-        children
-      ));
     }
 
     const TextInput = forwardRef(function TextInput(props, ref) {
       return e('input', {
         ...props, ref,
-        style: { width: "100%", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: "10px 14px", color: "#000000", fontSize: 18, outline: "none", boxShadow: "2px 3px 0px #000", ...(props.style || {}) }
+        style: { width: "100%", maxWidth: "100%", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: "10px 14px", color: "#000000", fontSize: 18, outline: "none", boxShadow: "2px 3px 0px #000", ...(props.style || {}) }
       });
     });
 
     function TextArea(props) {
       return e('textarea', {
         ...props,
-        style: { width: "100%", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: "10px 14px", color: "#000000", fontSize: 18, outline: "none", resize: "vertical", fontFamily: "inherit", lineHeight: 1.4, boxShadow: "2px 3px 0px #000", ...(props.style || {}) }
+        style: { width: "100%", maxWidth: "100%", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: "10px 14px", color: "#000000", fontSize: 18, outline: "none", resize: "vertical", fontFamily: "inherit", lineHeight: 1.4, boxShadow: "2px 3px 0px #000", ...(props.style || {}) }
       });
     }
 
@@ -218,7 +174,7 @@
         onClick,
         style: {
           textAlign: "left", cursor: "pointer", border: active ? "4px solid #000000" : "3px solid #000000",
-          background: active ? "#F0F0F0" : "#FFFFFF", borderRadius: C.handRadius, padding: 16, flex: "1 1 180px", minWidth: 150,
+          background: active ? "#F0F0F0" : "#FFFFFF", borderRadius: C.handRadius, padding: 16, flex: "1 1 180px", minWidth: 140, maxWidth: "100%",
           boxShadow: active ? "6px 8px 0px #000000" : C.boxShadow, transform: active ? "rotate(-1deg) scale(1.02)" : "rotate(0deg)"
         }
       },
@@ -254,7 +210,7 @@
         setTerm(""); setDefinition("");
       }
 
-      return e('div', null,
+      return e('div', { style: { maxWidth: "100%" } },
         e('div', { style: { background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: 20, marginBottom: 24, boxShadow: C.boxShadow } },
           e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 12 } }, editId ? "✏️ Vokabel ändern" : `➕ Neue Vokabel für „${subjectName}“`),
           e('div', { style: { display: "flex", flexDirection: "column", gap: 12 } },
@@ -282,7 +238,7 @@
             e('input', { type: "checkbox", checked: filtered.length > 0 && selected.size === filtered.length, onChange: toggleAll }),
             `Alle markieren (${filtered.length})`
           ),
-          selected.size > 0 && e('div', { style: { display: "flex", gap: 8, alignItems: "center" } },
+          selected.size > 0 && e('div', { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
             e('span', { style: { fontWeight: 700, fontSize: 15 } }, "Verschieben:"),
             [1,2,3,4].map(n => e(Button, { key: n, size: "sm", onClick: () => { onMoveMany([...selected], n); setSelected(new Set()); } }, `Kist ${n}`)),
             e(Button, { size: "sm", variant: "danger", onClick: () => { onDeleteMany([...selected]); setSelected(new Set()); } }, e(Trash2, { size: 16 }))
@@ -291,11 +247,11 @@
         e('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
           filtered.map(v => e('div', {
             key: v.id,
-            style: { display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: selected.has(v.id) ? "#F0F0F0" : "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, boxShadow: "2px 3px 0px #000" }
+            style: { display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: selected.has(v.id) ? "#F0F0F0" : "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, boxShadow: "2px 3px 0px #000", wordBreak: "break-word", overflowWrap: "anywhere" }
           },
             e('input', { type: "checkbox", checked: selected.has(v.id), onChange: () => toggle(v.id) }),
-            e('div', { style: { flex: "1 1 140px", fontWeight: 700, fontSize: 19 } }, v.term),
-            e('div', { style: { flex: "2 1 180px", fontSize: 18 } }, v.definition),
+            e('div', { style: { flex: "1 1 120px", fontWeight: 700, fontSize: 19, wordBreak: "break-word" } }, v.term),
+            e('div', { style: { flex: "2 1 150px", fontSize: 18, wordBreak: "break-word" } }, v.definition),
             e('select', { value: v.box, onChange: (ev) => onSetBox(v.id, Number(ev.target.value)), style: { border: "2px solid #000", padding: "4px 8px", borderRadius: 12, fontWeight: 700 } },
               [1,2,3,4].map(n => e('option', { key: n, value: n }, `Kiste ${n}`))
             ),
@@ -307,7 +263,7 @@
     }
 
     /* ------------------------------------------------------------------ */
-    /* Lernen mit den 4 neuen Modi                                        */
+    /* Lernen                                                             */
     /* ------------------------------------------------------------------ */
     function LearnView({ vocab, onSetBox }) {
       const counts = [1, 2, 3, 4].map((n) => vocab.filter((v) => v.box === n).length);
@@ -332,6 +288,10 @@
 
         if (finalCards.length === 0) return;
 
+        // Für den Wortpaare-Modus halten wir aktive Items im State
+        const initialActive = finalCards.slice(0, 3);
+        const initialRemaining = finalCards.slice(3);
+
         setSession({
           mode,
           queue: finalCards,
@@ -339,8 +299,13 @@
           revealed: false,
           correct: 0,
           wrong: 0,
-          pairSelectedLeft: null,
-          pairMatchedIds: [],
+          // Wortpaare spezifischer State:
+          activePairs: initialActive,
+          remainingPairs: initialRemaining,
+          leftItems: shuffle(initialActive.map(c => ({ id: c.id, text: c.term }))),
+          rightItems: shuffle(initialActive.map(c => ({ id: c.id, text: c.definition }))),
+          selectedLeft: null,
+          solvedCount: 0,
         });
       }
 
@@ -366,47 +331,73 @@
         return shuffle([card.definition, ...distractors]);
       }, [session?.index, session?.mode]);
 
-      /* Wortpaare für Wortpaar-Modus vorbereiten */
-      const currentPairs = useMemo(() => {
-        if (!session || session.mode !== "pairs") return { left: [], right: [] };
-        const chunk = session.queue.slice(session.index, session.index + 4);
-        return {
-          left: shuffle(chunk.map(c => ({ id: c.id, text: c.term }))),
-          right: shuffle(chunk.map(c => ({ id: c.id, text: c.definition })))
-        };
-      }, [session?.index, session?.mode]);
-
-      /* Paarzuordnungs-Handler */
+      /* Paarzuordnungs-Handler (Dynamisches Nachrücken von Wortpaaren) */
       function handlePairClick(type, item) {
         if (type === "left") {
-          setSession(s => ({ ...s, pairSelectedLeft: item }));
-        } else if (type === "right" && session.pairSelectedLeft) {
-          if (session.pairSelectedLeft.id === item.id) {
-            onSetBox(item.id, Math.min((vocab.find(v=>v.id===item.id)?.box || 1) + 1, 4));
-            const newMatched = [...session.pairMatchedIds, item.id];
+          setSession(s => ({ ...s, selectedLeft: item }));
+        } else if (type === "right" && session.selectedLeft) {
+          const matchedId = session.selectedLeft.id;
+          
+          if (matchedId === item.id) {
+            // Richtig zugeordnet!
+            onSetBox(matchedId, Math.min((vocab.find(v => v.id === matchedId)?.box || 1) + 1, 4));
             
-            if (newMatched.length >= Math.min(4, session.queue.length - session.index)) {
-              setSession(s => ({
-                ...s, index: s.index + 4, correct: s.correct + newMatched.length,
-                pairSelectedLeft: null, pairMatchedIds: []
-              }));
-            } else {
-              setSession(s => ({ ...s, pairMatchedIds: newMatched, pairSelectedLeft: null }));
-            }
+            setSession(s => {
+              const nextSolvedCount = s.solvedCount + 1;
+              const nextCorrect = s.correct + 1;
+              
+              // Entferne geklärtes Paar
+              let newLeft = s.leftItems.filter(l => l.id !== matchedId);
+              let newRight = s.rightItems.filter(r => r.id !== matchedId);
+
+              // Falls noch Wörter in der Warteschlange stehen, fülle auf!
+              let newRemaining = [...s.remainingPairs];
+              if (newRemaining.length > 0) {
+                const nextItem = newRemaining.shift();
+                newLeft = shuffle([...newLeft, { id: nextItem.id, text: nextItem.term }]);
+                newRight = shuffle([...newRight, { id: nextItem.id, text: nextItem.definition }]);
+              }
+
+              return {
+                ...s,
+                correct: nextCorrect,
+                solvedCount: nextSolvedCount,
+                leftItems: newLeft,
+                rightItems: newRight,
+                remainingPairs: newRemaining,
+                selectedLeft: null,
+              };
+            });
           } else {
-            onSetBox(session.pairSelectedLeft.id, 1);
-            setSession(s => ({ ...s, wrong: s.wrong + 1, pairSelectedLeft: null }));
+            // Falsch zugeordnet!
+            onSetBox(session.selectedLeft.id, 1);
+            setSession(s => ({ ...s, wrong: s.wrong + 1, selectedLeft: null }));
           }
         }
       }
 
       /* LAUFENDE SESSION ANZEIGEN */
-      if (session && session.index < session.queue.length) {
+      if (session) {
+        // Prüfen, ob Durchgang im Wortpaar-Modus beendet ist
+        const isPairsFinished = session.mode === "pairs" && session.solvedCount >= session.queue.length;
+        const isNormalFinished = session.mode !== "pairs" && session.index >= session.queue.length;
+
+        if (isPairsFinished || isNormalFinished) {
+          return e('div', { style: { maxWidth: 440, margin: "40px auto", textAlign: "center", background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: 30, boxShadow: C.boxShadow } },
+            e(Sparkles, { size: 48, style: { marginBottom: 12 } }),
+            e('div', { style: { fontSize: 28, fontWeight: 700 } }, "Klasse gemacht! 🎉"),
+            e('div', { style: { fontSize: 20, marginTop: 10 } }, `${session.correct} richtig · ${session.wrong} falsch`),
+            e(Button, { variant: "accent", style: { marginTop: 24 }, onClick: () => setSession(null) }, "Weiter üben")
+          );
+        }
+
         const card = session.queue[session.index];
 
-        return e('div', { style: { maxWidth: 580, margin: "0 auto" } },
+        return e('div', { style: { maxWidth: 580, margin: "0 auto", width: "100%" } },
           e('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 } },
-            e('span', { style: { fontSize: 16, fontWeight: 700 } }, `Karte ${session.index + 1} von ${session.queue.length}`),
+            e('span', { style: { fontSize: 16, fontWeight: 700 } }, 
+              session.mode === "pairs" ? `Gelöst: ${session.solvedCount} von ${session.queue.length}` : `Karte ${session.index + 1} von ${session.queue.length}`
+            ),
             e(Button, { size: "sm", variant: "ghost", onClick: () => setSession(null) }, "Stopp")
           ),
 
@@ -415,17 +406,17 @@
             e('div', {
               style: {
                 background: "#FFFFFF", border: "4px solid #000000", borderRadius: C.handRadius,
-                padding: 30, minHeight: 200, display: "flex", flexDirection: "column",
+                padding: 24, minHeight: 200, display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "center", textAlign: "center",
-                boxShadow: "6px 8px 0px #000000"
+                boxShadow: "6px 8px 0px #000000", wordBreak: "break-word", overflowWrap: "anywhere", maxWidth: "100%"
               }
             },
-              e('div', { style: { fontSize: 32, fontWeight: 700 } }, session.mode === "direct" ? card.term : card.definition),
-              session.revealed && e('div', { style: { marginTop: 20, paddingTop: 20, borderTop: "3px dashed #000", fontSize: 26, width: "100%" } },
+              e('div', { style: { fontSize: 30, fontWeight: 700, wordBreak: "break-word", overflowWrap: "anywhere", width: "100%" } }, session.mode === "direct" ? card.term : card.definition),
+              session.revealed && e('div', { style: { marginTop: 20, paddingTop: 20, borderTop: "3px dashed #000", fontSize: 24, width: "100%", wordBreak: "break-word", overflowWrap: "anywhere" } },
                 session.mode === "direct" ? card.definition : card.term
               )
             ),
-            e('div', { style: { display: "flex", justifyContent: "center", gap: 14, marginTop: 20 } },
+            e('div', { style: { display: "flex", justifyContent: "center", gap: 14, marginTop: 20, flexWrap: "wrap" } },
               !session.revealed ? e(Button, { variant: "accent", size: "lg", onClick: () => setSession(s => ({ ...s, revealed: true })) }, "Umdrehen 🔄")
               : [
                 e(Button, { key: 1, variant: "danger", size: "lg", onClick: () => answer(false) }, "Nochmal ❌"),
@@ -434,15 +425,16 @@
             )
           ),
 
-          /* MODUS 3: Ratemodus / Quiz */
+          /* MODUS 3: Ratemodus / Quiz (Untereinander mit Zeilenumbruch) */
           session.mode === "quiz" && e('div', null,
-            e('div', { style: { background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: 24, textAlign: "center", marginBottom: 20, boxShadow: C.boxShadow } },
+            e('div', { style: { background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: 20, textAlign: "center", marginBottom: 20, boxShadow: C.boxShadow, wordBreak: "break-word", overflowWrap: "anywhere" } },
               e('div', { style: { fontSize: 16, color: "#666" } }, "Wie lautet die richtige Übersetzung?"),
-              e('div', { style: { fontSize: 30, fontWeight: 700, marginTop: 6 } }, card.term)
+              e('div', { style: { fontSize: 28, fontWeight: 700, marginTop: 6, wordBreak: "break-word", overflowWrap: "anywhere" } }, card.term)
             ),
-            e('div', { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } },
+            e('div', { style: { display: "flex", flexDirection: "column", gap: 12, width: "100%" } },
               currentQuizOptions.map((opt, idx) => e(Button, {
                 key: idx, variant: "default", size: "md",
+                style: { width: "100%", wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" },
                 onClick: () => {
                   const isCorrect = opt === card.definition;
                   answer(isCorrect);
@@ -451,45 +443,41 @@
             )
           ),
 
-          /* MODUS 4: Wortpaare */
-          session.mode === "pairs" && e('div', null,
-            e('div', { style: { textAlign: "center", fontWeight: 700, marginBottom: 12 } }, "Klicke erst ein Wort links und dann die passende Übersetzung rechts an:"),
-            e('div', { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 } },
+          /* MODUS 4: Wortpaare (3 oben Ausgangssprache / 3 unten Zielsprache) */
+          session.mode === "pairs" && e('div', { style: { width: "100%" } },
+            e('div', { style: { textAlign: "center", fontWeight: 700, marginBottom: 16 } }, "Erst ein Wort oben anklicken, dann unten die Übersetzung wählen:"),
+            
+            /* Oben: 3 x Ausgangssprache */
+            e('div', { style: { marginBottom: 24 } },
+              e('div', { style: { fontSize: 14, fontWeight: 700, textTransform: "uppercase", marginBottom: 8, color: "#555" } }, "Ausgangssprache:"),
               e('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
-                currentPairs.left.map(item => {
-                  const isMatched = session.pairMatchedIds.includes(item.id);
-                  const isSelected = session.pairSelectedLeft?.id === item.id;
-                  if (isMatched) return null;
+                session.leftItems.map(item => {
+                  const isSelected = session.selectedLeft?.id === item.id;
                   return e(Button, {
                     key: item.id,
                     variant: isSelected ? "accent" : "default",
-                    onClick: () => handlePairClick("type", item) || handlePairClick("left", item)
+                    style: { width: "100%", wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" },
+                    onClick: () => handlePairClick("left", item)
                   }, item.text);
                 })
-              ),
+              )
+            ),
+
+            /* Unten: 3 x Zielsprache */
+            e('div', null,
+              e('div', { style: { fontSize: 14, fontWeight: 700, textTransform: "uppercase", marginBottom: 8, color: "#555" } }, "Zielsprache:"),
               e('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
-                currentPairs.right.map(item => {
-                  const isMatched = session.pairMatchedIds.includes(item.id);
-                  if (isMatched) return null;
+                session.rightItems.map(item => {
                   return e(Button, {
                     key: item.id,
                     variant: "default",
+                    style: { width: "100%", wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" },
                     onClick: () => handlePairClick("right", item)
                   }, item.text);
                 })
               )
             )
           )
-        );
-      }
-
-      /* SESSION FERTIG */
-      if (session && session.index >= session.queue.length) {
-        return e('div', { style: { maxWidth: 440, margin: "40px auto", textAlign: "center", background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: 30, boxShadow: C.boxShadow } },
-          e(Sparkles, { size: 48, style: { marginBottom: 12 } }),
-          e('div', { style: { fontSize: 28, fontWeight: 700 } }, "Klasse gemacht! 🎉"),
-          e('div', { style: { fontSize: 20, marginTop: 10 } }, `${session.correct} richtig · ${session.wrong} falsch`),
-          e(Button, { variant: "accent", style: { marginTop: 24 }, onClick: () => setSession(null) }, "Weiter üben")
         );
       }
 
@@ -548,9 +536,9 @@
       const currentSubject = data.subjects.find((s) => s.id === data.currentSubjectId) || data.subjects[0];
       const vocab = data.vocab.filter((v) => v.subjectId === currentSubject?.id);
 
-      return e('div', { style: { minHeight: "100vh", background: "#FFFFFF", padding: "20px 14px 60px" } },
-        e('div', { style: { maxWidth: 840, margin: "0 auto" } },
-          e('div', { style: { display: "flex", gap: 14, alignItems: "center", justifyContent: "space-between", marginBottom: 24, borderBottom: "3px solid #000", paddingBottom: 16 } },
+      return e('div', { style: { minHeight: "100vh", background: "#FFFFFF", padding: "20px 14px 60px", overflowX: "hidden" } },
+        e('div', { style: { maxWidth: 840, margin: "0 auto", width: "100%" } },
+          e('div', { style: { display: "flex", gap: 14, alignItems: "center", justifyContent: "space-between", marginBottom: 24, borderBottom: "3px solid #000", paddingBottom: 16, flexWrap: "wrap" } },
             e('div', { style: { display: "flex", alignItems: "center", gap: 12 } },
               e('div', { style: { background: "#000", color: "#FFF", padding: 8, borderRadius: C.handRadius } }, e(BookOpen, { size: 28, color: "#FFF" })),
               e('div', { style: { fontSize: 30, fontWeight: 700 } }, "Mein Vokabelheft")
