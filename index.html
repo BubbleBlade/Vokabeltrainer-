@@ -73,6 +73,8 @@
     const Sparkles = (props) => e(Icon, { name: "sparkles", ...props });
     const ListChecks = (props) => e(Icon, { name: "list-checks", ...props });
     const Play = (props) => e(Icon, { name: "play", ...props });
+    const Settings = (props) => e(Icon, { name: "settings", ...props });
+    const X = (props) => e(Icon, { name: "x", ...props });
 
     const C = {
       handBorder: "3px solid #000000",
@@ -181,6 +183,63 @@
         e('div', { style: { fontSize: 13, fontWeight: 700, textTransform: "uppercase", textDecoration: "underline" } }, label),
         e('div', { style: { fontSize: 26, fontWeight: 700, margin: "4px 0" } }, count),
         title && e('div', { style: { fontSize: 12, color: "#444" } }, title)
+      );
+    }
+
+    /* Modal für Spracheinstellungen */
+    function SettingsModal({ isOpen, onClose, subjects, onAddSubject, onDeleteSubject }) {
+      const [newSubjectName, setNewSubjectName] = useState("");
+
+      if (!isOpen) return null;
+
+      function handleAdd() {
+        if (!newSubjectName.trim()) return;
+        onAddSubject(newSubjectName.trim());
+        setNewSubjectName("");
+      }
+
+      return e('div', {
+        style: {
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 1000, padding: 16
+        }
+      },
+        e('div', {
+          style: {
+            background: "#FFFFFF", border: "4px solid #000000", borderRadius: C.handRadius,
+            padding: 24, maxWidth: 450, width: "100%", boxShadow: "8px 10px 0px #000000", position: "relative"
+          }
+        },
+          e('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
+            e('div', { style: { fontSize: 24, fontWeight: 700 } }, "Sprachen verwalten ⚙️"),
+            e('button', { onClick: onClose, style: { background: "none", border: "none", cursor: "pointer" } }, e(X, { size: 24 }))
+          ),
+          e('div', { style: { marginBottom: 20 } },
+            e('div', { style: { fontSize: 16, fontWeight: 700, marginBottom: 8 } }, "Neue Sprache / neues Fach:"),
+            e('div', { style: { display: "flex", gap: 8 } },
+              e(TextInput, { placeholder: "z. B. Französisch", value: newSubjectName, onChange: (ev) => setNewSubjectName(ev.target.value) }),
+              e(Button, { variant: "accent", onClick: handleAdd }, e(Plus, { size: 18, color: "#FFF" }))
+            )
+          ),
+          e('div', { style: { fontSize: 16, fontWeight: 700, marginBottom: 8 } }, "Vorhandene Sprachen:"),
+          e('div', { style: { display: "flex", flexDirection: "column", gap: 8, maxHeight: 200, overflowY: "auto" } },
+            subjects.map(s => e('div', {
+              key: s.id,
+              style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", border: "2px solid #000", borderRadius: 12, background: "#F9F9F9" }
+            },
+              e('span', { style: { fontWeight: 700 } }, s.name),
+              subjects.length > 1 && e('button', {
+                onClick: () => {
+                  if (confirm(`Möchtest du „${s.name}“ wirklich löschen? Alle zugehörigen Vokabeln werden ebenfalls gelöscht.`)) {
+                    onDeleteSubject(s.id);
+                  }
+                },
+                style: { background: "none", border: "none", cursor: "pointer" }
+              }, e(Trash2, { size: 18, color: "#000" }))
+            ))
+          )
+        )
       );
     }
 
@@ -482,7 +541,6 @@
       return e('div', null,
         e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 14 } }, "1. Wähle eine Kiste aus:"),
         
-        /* Kisten-Layout: 4 Kisten oben in gleich großen Spalten + 1 breite Kiste darunter */
         e('div', { style: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 } },
           e('div', { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 } },
             counts.map((c, i) => e(DrawerBox, { key: i, label: `Kiste ${i+1}`, title: BOX_LABELS[i], count: c, active: selectedBox === i + 1, onClick: () => setSelectedBox(i + 1) }))
@@ -517,6 +575,7 @@
     function App() {
       const [data, setData] = useState(null);
       const [tab, setTab] = useState("learn");
+      const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
       useEffect(() => {
         (async () => {
@@ -538,6 +597,29 @@
       const currentSubject = data.subjects.find((s) => s.id === data.currentSubjectId) || data.subjects[0];
       const vocab = data.vocab.filter((v) => v.subjectId === currentSubject?.id);
 
+      function handleAddSubject(name) {
+        const newId = uid();
+        setData(d => ({
+          ...d,
+          subjects: [...d.subjects, { id: newId, name }],
+          currentSubjectId: newId
+        }));
+      }
+
+      function handleDeleteSubject(subjectId) {
+        setData(d => {
+          const newSubjects = d.subjects.filter(s => s.id !== subjectId);
+          const newVocab = d.vocab.filter(v => v.subjectId !== subjectId);
+          const nextSubjectId = d.currentSubjectId === subjectId ? newSubjects[0]?.id : d.currentSubjectId;
+          return {
+            ...d,
+            subjects: newSubjects,
+            vocab: newVocab,
+            currentSubjectId: nextSubjectId
+          };
+        });
+      }
+
       return e('div', { style: { minHeight: "100vh", background: "#FFFFFF", padding: "20px 14px 60px", overflowX: "hidden" } },
         e('div', { style: { maxWidth: 840, margin: "0 auto", width: "100%" } },
           e('div', { style: { display: "flex", gap: 14, alignItems: "center", justifyContent: "space-between", marginBottom: 24, borderBottom: "3px solid #000", paddingBottom: 16, flexWrap: "wrap" } },
@@ -545,10 +627,13 @@
               e('div', { style: { background: "#000", color: "#FFF", padding: 8, borderRadius: C.handRadius } }, e(BookOpen, { size: 28, color: "#FFF" })),
               e('div', { style: { fontSize: 30, fontWeight: 700 } }, "Mein Vokabelheft")
             ),
-            e('select', {
-              value: currentSubject?.id || "", onChange: (ev) => setData(d => ({ ...d, currentSubjectId: ev.target.value })),
-              style: { background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: "8px 16px", fontSize: 18, fontWeight: 700 }
-            }, data.subjects.map(s => e('option', { key: s.id, value: s.id }, s.name)))
+            e('div', { style: { display: "flex", alignItems: "center", gap: 8 } },
+              e('select', {
+                value: currentSubject?.id || "", onChange: (ev) => setData(d => ({ ...d, currentSubjectId: ev.target.value })),
+                style: { background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: "8px 16px", fontSize: 18, fontWeight: 700 }
+              }, data.subjects.map(s => e('option', { key: s.id, value: s.id }, s.name))),
+              e(Button, { size: "sm", variant: "subtle", onClick: () => setIsSettingsOpen(true), title: "Sprachen verwalten" }, e(Settings, { size: 20 }))
+            )
           ),
           e('div', { style: { display: "flex", gap: 10, marginBottom: 28 } },
             e(Button, { variant: tab === "learn" ? "accent" : "default", onClick: () => setTab("learn"), style: { flex: 1 } }, e(Layers, { size: 20 }), " Lernen"),
@@ -556,12 +641,20 @@
           ),
           tab === "learn" && e(LearnView, { vocab, onSetBox: (id, box) => setData(d => ({ ...d, vocab: d.vocab.map(v => v.id === id ? { ...v, box } : v) })) }),
           tab === "list" && e(ListView, {
-            vocab, subjectName: currentSubject.name,
+            vocab, subjectName: currentSubject?.name || "",
             onAdd: (term, definition) => setData(d => ({ ...d, vocab: [...d.vocab, { id: uid(), subjectId: currentSubject.id, term, definition, box: 1, createdAt: Date.now() }] })),
             onUpdate: (id, term, definition) => setData(d => ({ ...d, vocab: d.vocab.map(v => v.id === id ? { ...v, term, definition } : v) })),
             onDeleteMany: (ids) => setData(d => ({ ...d, vocab: d.vocab.filter(v => !ids.includes(v.id)) })),
             onMoveMany: (ids, box) => setData(d => ({ ...d, vocab: d.vocab.map(v => ids.includes(v.id) ? { ...v, box } : v) })),
             onSetBox: (id, box) => setData(d => ({ ...d, vocab: d.vocab.map(v => v.id === id ? { ...v, box } : v) }))
+          }),
+
+          e(SettingsModal, {
+            isOpen: isSettingsOpen,
+            onClose: () => setIsSettingsOpen(false),
+            subjects: data.subjects,
+            onAddSubject: handleAddSubject,
+            onDeleteSubject: handleDeleteSubject
           })
         )
       );
