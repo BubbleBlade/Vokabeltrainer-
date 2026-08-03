@@ -411,4 +411,161 @@
                 background: "#FFFFFF", border: "4px solid #000000", borderRadius: C.handRadius,
                 padding: 24, minHeight: 200, display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "center", textAlign: "center",
-                boxShadow: "6px 8px
+                boxShadow: "6px 8px 0px #000000", wordBreak: "break-word", overflowWrap: "anywhere", maxWidth: "100%"
+              }
+            },
+              e('div', { style: { fontSize: 30, fontWeight: 700, wordBreak: "break-word", overflowWrap: "anywhere", width: "100%" } }, session.mode === "direct" ? card.term : card.definition),
+              session.revealed && e('div', { style: { marginTop: 20, paddingTop: 20, borderTop: "3px dashed #000", fontSize: 24, width: "100%", wordBreak: "break-word", overflowWrap: "anywhere" } },
+                session.mode === "direct" ? card.definition : card.term
+              )
+            ),
+            e('div', { style: { display: "flex", justifyContent: "center", gap: 14, marginTop: 20, flexWrap: "wrap" } },
+              !session.revealed ? e(Button, { variant: "accent", size: "lg", onClick: () => setSession(s => ({ ...s, revealed: true })) }, "Umdrehen 🔄")
+              : [
+                e(Button, { key: 1, variant: "danger", size: "lg", onClick: () => answer(false) }, "Nochmal ❌"),
+                e(Button, { key: 2, variant: "accent", size: "lg", onClick: () => answer(true) }, "Gewusst! ✔️")
+              ]
+            )
+          ),
+
+          session.mode === "quiz" && e('div', null,
+            e('div', { style: { background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: 20, textAlign: "center", marginBottom: 20, boxShadow: C.boxShadow, wordBreak: "break-word", overflowWrap: "anywhere" } },
+              e('div', { style: { fontSize: 16, color: "#666" } }, "Wie lautet die richtige Übersetzung?"),
+              e('div', { style: { fontSize: 28, fontWeight: 700, marginTop: 6, wordBreak: "break-word", overflowWrap: "anywhere" } }, card.term)
+            ),
+            e('div', { style: { display: "flex", flexDirection: "column", gap: 12, width: "100%" } },
+              currentQuizOptions.map((opt, idx) => e(Button, {
+                key: idx, variant: "default", size: "md",
+                style: { width: "100%", wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" },
+                onClick: () => {
+                  const isCorrect = opt === card.definition;
+                  answer(isCorrect);
+                }
+              }, opt))
+            )
+          ),
+
+          session.mode === "pairs" && e('div', { style: { width: "100%" } },
+            e('div', { style: { textAlign: "center", fontWeight: 700, marginBottom: 16 } }, "Erst ein Wort oben anklicken, dann unten die Übersetzung wählen:"),
+            
+            e('div', { style: { marginBottom: 24 } },
+              e('div', { style: { fontSize: 14, fontWeight: 700, textTransform: "uppercase", marginBottom: 8, color: "#555" } }, "Ausgangssprache:"),
+              e('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
+                session.leftItems.map(item => {
+                  const isSelected = session.selectedLeft?.id === item.id;
+                  return e(Button, {
+                    key: item.id,
+                    variant: isSelected ? "accent" : "default",
+                    style: { width: "100%", wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" },
+                    onClick: () => handlePairClick("left", item)
+                  }, item.text);
+                })
+              )
+            ),
+
+            e('div', null,
+              e('div', { style: { fontSize: 14, fontWeight: 700, textTransform: "uppercase", marginBottom: 8, color: "#555" } }, "Zielsprache:"),
+              e('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
+                session.rightItems.map(item => {
+                  return e(Button, {
+                    key: item.id,
+                    variant: "default",
+                    style: { width: "100%", wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" },
+                    onClick: () => handlePairClick("right", item)
+                  }, item.text);
+                })
+              )
+            )
+          )
+        );
+      }
+
+      return e('div', null,
+        e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 14 } }, "1. Wähle eine Kiste aus:"),
+        e('div', { style: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 24 } },
+          e(DrawerBox, { label: "Alle Kisten", title: "Gesamtpool", count: vocab.length, active: selectedBox === "all", onClick: () => setSelectedBox("all") }),
+          counts.map((c, i) => e(DrawerBox, { key: i, label: `Kiste ${i+1}`, title: BOX_LABELS[i], count: c, active: selectedBox === i + 1, onClick: () => setSelectedBox(i + 1) }))
+        ),
+
+        e('div', { style: { background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: 24, maxWidth: 560, margin: "0 auto", boxShadow: C.boxShadow } },
+          
+          e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 10 } }, "2. Lernmodus auswählen:"),
+          e('div', { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 } },
+            e(Button, { size: "sm", variant: mode === "direct" ? "accent" : "default", onClick: () => setMode("direct") }, "Ausgangs ➔ Ziel"),
+            e(Button, { size: "sm", variant: mode === "reverse" ? "accent" : "default", onClick: () => setMode("reverse") }, "Ziel ➔ Ausgangs"),
+            e(Button, { size: "sm", variant: mode === "quiz" ? "accent" : "default", onClick: () => setMode("quiz") }, "🎯 Ratemodus (Quiz)"),
+            e(Button, { size: "sm", variant: mode === "pairs" ? "accent" : "default", onClick: () => setMode("pairs") }, "🧩 Wortpaare")
+          ),
+
+          e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 10 } }, "3. Wie viele Wörter?"),
+          e('div', { style: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 24 } },
+            ["5", "10", "20", "all"].map(val => e(Button, {
+              key: val, size: "sm", variant: countChoice === val ? "accent" : "default", onClick: () => setCountChoice(val)
+            }, val === "all" ? "Alle Wörter" : `${val} Wörter`))
+          ),
+
+          e(Button, { variant: "accent", size: "lg", disabled: vocab.length === 0, onClick: startSession, style: { width: "100%" } },
+            e(Play, { size: 22, color: "#FFF" }), " Jetzt Starten!"
+          )
+        )
+      );
+    }
+
+    function App() {
+      const [data, setData] = useState(null);
+      const [tab, setTab] = useState("learn");
+
+      useEffect(() => {
+        (async () => {
+          try {
+            const res = await window.storage.get(STORAGE_KEY);
+            setData(res && res.value ? JSON.parse(res.value) : defaultData());
+          } catch { setData(defaultData()); }
+        })();
+      }, []);
+
+      useEffect(() => {
+        if (!data) return;
+        const t = setTimeout(() => { window.storage.set(STORAGE_KEY, JSON.stringify(data)); }, 300);
+        return () => clearTimeout(t);
+      }, [data]);
+
+      if (!data) return e('div', { style: { padding: 40, textAlign: "center", fontWeight: 700 } }, "Wird geladen... ✏️");
+
+      const currentSubject = data.subjects.find((s) => s.id === data.currentSubjectId) || data.subjects[0];
+      const vocab = data.vocab.filter((v) => v.subjectId === currentSubject?.id);
+
+      return e('div', { style: { minHeight: "100vh", background: "#FFFFFF", padding: "20px 14px 60px", overflowX: "hidden" } },
+        e('div', { style: { maxWidth: 840, margin: "0 auto", width: "100%" } },
+          e('div', { style: { display: "flex", gap: 14, alignItems: "center", justifyContent: "space-between", marginBottom: 24, borderBottom: "3px solid #000", paddingBottom: 16, flexWrap: "wrap" } },
+            e('div', { style: { display: "flex", alignItems: "center", gap: 12 } },
+              e('div', { style: { background: "#000", color: "#FFF", padding: 8, borderRadius: C.handRadius } }, e(BookOpen, { size: 28, color: "#FFF" })),
+              e('div', { style: { fontSize: 30, fontWeight: 700 } }, "Mein Vokabelheft")
+            ),
+            e('select', {
+              value: currentSubject?.id || "", onChange: (ev) => setData(d => ({ ...d, currentSubjectId: ev.target.value })),
+              style: { background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: "8px 16px", fontSize: 18, fontWeight: 700 }
+            }, data.subjects.map(s => e('option', { key: s.id, value: s.id }, s.name)))
+          ),
+          e('div', { style: { display: "flex", gap: 10, marginBottom: 28 } },
+            e(Button, { variant: tab === "learn" ? "accent" : "default", onClick: () => setTab("learn"), style: { flex: 1 } }, e(Layers, { size: 20 }), " Lernen"),
+            e(Button, { variant: tab === "list" ? "accent" : "default", onClick: () => setTab("list"), style: { flex: 1 } }, e(ListChecks, { size: 20 }), " Vokabel-Liste")
+          ),
+          tab === "learn" && e(LearnView, { vocab, onSetBox: (id, box) => setData(d => ({ ...d, vocab: d.vocab.map(v => v.id === id ? { ...v, box } : v) })) }),
+          tab === "list" && e(ListView, {
+            vocab, subjectName: currentSubject.name,
+            onAdd: (term, definition) => setData(d => ({ ...d, vocab: [...d.vocab, { id: uid(), subjectId: currentSubject.id, term, definition, box: 1, createdAt: Date.now() }] })),
+            onUpdate: (id, term, definition) => setData(d => ({ ...d, vocab: d.vocab.map(v => v.id === id ? { ...v, term, definition } : v) })),
+            onDeleteMany: (ids) => setData(d => ({ ...d, vocab: d.vocab.filter(v => !ids.includes(v.id)) })),
+            onMoveMany: (ids, box) => setData(d => ({ ...d, vocab: d.vocab.map(v => ids.includes(v.id) ? { ...v, box } : v) })),
+            onSetBox: (id, box) => setData(d => ({ ...d, vocab: d.vocab.map(v => v.id === id ? { ...v, box } : v) }))
+          })
+        )
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(e(App));
+  </script>
+</body>
+</html>
