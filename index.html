@@ -92,12 +92,11 @@
     const Trash2 = (props) => <Icon name="trash-2" {...props} />;
     const ArrowRightLeft = (props) => <Icon name="arrow-right-left" {...props} />;
     const BookOpen = (props) => <Icon name="book-open" {...props} />;
-    const ClipboardCopy = (props) => <Icon name="clipboard-copy" {...props} />;
     const ClipboardPaste = (props) => <Icon name="clipboard-paste" {...props} />;
+    const Download = (props) => <Icon name="download" {...props} />;
     const FileUp = (props) => <Icon name="file-up" {...props} />;
     const X = (props) => <Icon name="x" {...props} />;
     const Check = (props) => <Icon name="check" {...props} />;
-    const ChevronDown = (props) => <Icon name="chevron-down" {...props} />;
     const Settings = (props) => <Icon name="settings" {...props} />;
     const Layers = (props) => <Icon name="layers" {...props} />;
     const Pencil = (props) => <Icon name="pencil" {...props} />;
@@ -118,7 +117,7 @@
       textMuted: "#444444",
       textFaint: "#777777",
       handBorder: "3px solid #000000",
-      handRadius: "255px 15px 225px 15px/15px 225px 15px 255px", // Erzeugt leicht unregelmäßige Ränder
+      handRadius: "255px 15px 225px 15px/15px 225px 15px 255px",
       handRadiusAlt: "18px 255px 14px 225px/225px 15px 255px 14px",
       boxShadow: "3px 4px 0px #000000",
     };
@@ -151,16 +150,23 @@
       };
     }
 
-    /* ------------------------------------------------------------------ */
-    /* Import/Export Helper                                               */
-    /* ------------------------------------------------------------------ */
-    function buildExportText(list) {
-      return list
-        .map((v) => {
-          const defLines = (v.definition || "").split("\n");
-          return [`BEGRIFF: ${v.term}`, `DEFINITION: ${defLines[0] || ""}`, ...defLines.slice(1), `BOX: ${v.box}`].join("\n");
-        })
-        .join("\n---\n");
+    /* Helper zum Herunterladen als echte CSV-Datei */
+    function downloadCSV(vocabList, filename = "vokabeln.csv") {
+      let csvContent = "\uFEFFWort;Bedeutung;Kiste\n"; // UTF-8 BOM für Excel
+      vocabList.forEach((v) => {
+        const cleanTerm = `"${(v.term || "").replace(/"/g, '""')}"`;
+        const cleanDef = `"${(v.definition || "").replace(/"/g, '""')}"`;
+        csvContent += `${cleanTerm};${cleanDef};${v.box}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     function parseImportText(text) {
@@ -201,7 +207,7 @@
       const results = [];
 
       for (const line of lines) {
-        if (/^(begriff|term|word|vokabel)[;,\t]/i.test(line)) continue;
+        if (/^(begriff|term|word|vokabel|wort)[;,\t]/i.test(line)) continue;
 
         let parts = [];
         if (line.includes(";")) parts = line.split(";");
@@ -211,10 +217,15 @@
         else if (line.includes(" = ")) parts = line.split(" = ");
 
         if (parts.length >= 2) {
-          const term = parts[0].trim();
-          const definition = parts.slice(1).join(", ").trim();
+          const term = parts[0].replace(/^"/, '').replace(/"$/, '').trim();
+          const definition = parts[1].replace(/^"/, '').replace(/"$/, '').trim();
+          let box = 1;
+          if (parts[2]) {
+            const parsedBox = parseInt(parts[2].trim(), 10);
+            if (parsedBox >= 1 && parsedBox <= 4) box = parsedBox;
+          }
           if (term && definition) {
-            results.push({ term, definition, box: 1 });
+            results.push({ term, definition, box });
           }
         }
       }
@@ -223,7 +234,7 @@
     }
 
     /* ------------------------------------------------------------------ */
-    /* Kinder-UI Bausteine (Handgezeichneter Stil)                         */
+    /* Kinder-UI Bausteine                                                */
     /* ------------------------------------------------------------------ */
     function Button({ children, onClick, variant = "default", size = "md", disabled, style, title }) {
       const base = {
@@ -342,7 +353,6 @@
               <div style={{ fontSize: 14, color: C.textMuted, marginTop: 2 }}>{BOX_LABELS[index]}</div>
             </div>
             
-            {/* Gemalte Kartenstapel-Illustration */}
             <div style={{ position: "relative", width: 44, height: 44, border: "2px dashed #000", borderRadius: 8, padding: 2 }}>
               {Array.from({ length: visibleCards }).map((_, i) => (
                 <div key={i} style={{
@@ -459,7 +469,7 @@
 
           <TextArea
             rows={6}
-            placeholder="Text hier rein... (z. B. Haus; house)"
+            placeholder="Text hier rein... (z. B. Wort;Bedeutung;Kiste)"
             value={text}
             onChange={(e) => { setText(e.target.value); setPreview(null); }}
           />
@@ -489,7 +499,7 @@
     /* ------------------------------------------------------------------ */
     /* Liste / Verwalten                                                  */
     /* ------------------------------------------------------------------ */
-    function ListView({ vocab, subjectName, onAdd, onUpdate, onDeleteMany, onMoveMany }) {
+    function ListView({ vocab, subjectName, onAdd, onUpdate, onDeleteMany, onMoveMany, onSetBox }) {
       const [term, setTerm] = useState("");
       const [definition, setDefinition] = useState("");
       const [editId, setEditId] = useState(null);
@@ -509,18 +519,31 @@
       function toggle(id) {
         setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
       }
+      
       function toggleAll() {
-        setSelected((s) => s.size === filtered.length ? new Set() : new Set(filtered.map((v) => v.id)));
+        if (selected.size === filtered.length && filtered.length > 0) {
+          setSelected(new Set());
+        } else {
+          setSelected(new Set(filtered.map((v) => v.id)));
+        }
       }
+
       function submit() {
         if (!term.trim()) return;
         if (editId) { onUpdate(editId, term.trim(), definition.trim()); setEditId(null); }
         else { onAdd(term.trim(), definition.trim()); }
         setTerm(""); setDefinition("");
       }
+
       function startEdit(v) {
         setEditId(v.id); setTerm(v.term); setDefinition(v.definition);
         window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function handleExportCSV() {
+        const listToExport = selected.size > 0 ? vocab.filter((v) => selected.has(v.id)) : vocab;
+        const filename = `vokabeln_${subjectName.toLowerCase().replace(/\s+/g, '_')}.csv`;
+        downloadCSV(listToExport, filename);
       }
 
       return (
@@ -540,12 +563,13 @@
             </div>
           </div>
 
-          {/* Suchen & Filter */}
+          {/* Suchen & Filter & Export */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 16 }}>
             <div style={{ position: "relative", flex: "1 1 200px" }}>
               <Search size={18} style={{ position: "absolute", left: 12, top: 12, color: "#000" }} />
               <TextInput placeholder="Suchen..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ paddingLeft: 38 }} />
             </div>
+            
             <select 
               value={boxFilter} 
               onChange={(e) => setBoxFilter(e.target.value)} 
@@ -554,34 +578,74 @@
               <option value="all">Alle Kisten</option>
               {[1, 2, 3, 4].map((n) => <option key={n} value={n}>Kiste {n}</option>)}
             </select>
-            <Button size="sm" variant="subtle" onClick={() => setShowImport(true)}><ClipboardPaste size={16} /> Importieren</Button>
+
+            <Button size="sm" variant="subtle" onClick={handleExportCSV} title="Markierte oder alle Vokabeln als CSV-Datei herunterladen">
+              <Download size={16} /> {selected.size > 0 ? `${selected.size} als CSV` : "Alle als CSV"}
+            </Button>
+            
+            <Button size="sm" variant="subtle" onClick={() => setShowImport(true)}>
+              <ClipboardPaste size={16} /> Importieren
+            </Button>
           </div>
 
-          {selected.size > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", background: "#F0F0F0", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: 12, marginBottom: 16 }}>
-              <span style={{ fontWeight: 700 }}>{selected.size} ausgewählt:</span>
-              {[1, 2, 3, 4].map((n) => (
-                <Button key={n} size="sm" variant="default" onClick={() => { onMoveMany([...selected], n); setSelected(new Set()); }}>→ Kiste {n}</Button>
-              ))}
-              <Button size="sm" variant="danger" onClick={() => { onDeleteMany([...selected]); setSelected(new Set()); }}><Trash2 size={16} /> Löschen</Button>
-            </div>
-          )}
+          {/* Alle markieren / Aktionsleiste */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: "10px 14px", marginBottom: 14 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: 700 }}>
+              <input 
+                type="checkbox" 
+                checked={filtered.length > 0 && selected.size === filtered.length} 
+                onChange={toggleAll} 
+              />
+              Alle markieren ({filtered.length})
+            </label>
+
+            {selected.size > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>Verschieben nach:</span>
+                {[1, 2, 3, 4].map((n) => (
+                  <Button key={n} size="sm" variant="default" onClick={() => { onMoveMany([...selected], n); setSelected(new Set()); }}>
+                    Kiste {n}
+                  </Button>
+                ))}
+                <Button size="sm" variant="danger" onClick={() => { onDeleteMany([...selected]); setSelected(new Set()); }}>
+                  <Trash2 size={16} /> Löschen
+                </Button>
+              </div>
+            )}
+          </div>
 
           {/* Vokabelliste als gemalte Karten */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {filtered.length === 0 && (
               <div style={{ padding: 30, textAlign: "center", border: "2px dashed #000", borderRadius: C.handRadius, background: "#FFF" }}>
-                Noch keine Vokabeln da. Trag oben eine ein! 📝
+                Keine Vokabeln gefunden. 📝
               </div>
             )}
             {filtered.map((v) => (
-              <div key={v.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, boxShadow: "2px 3px 0px #000" }}>
+              <div key={v.id} style={{ 
+                display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", 
+                background: selected.has(v.id) ? "#F0F0F0" : "#FFFFFF", 
+                border: C.handBorder, borderRadius: C.handRadiusAlt, boxShadow: "2px 3px 0px #000" 
+              }}>
                 <input type="checkbox" checked={selected.has(v.id)} onChange={() => toggle(v.id)} />
                 <div style={{ flex: "1 1 140px", fontWeight: 700, fontSize: 19 }}>{v.term}</div>
-                <div style={{ flex: "2 1 200px", fontSize: 18, whiteSpace: "pre-wrap" }}>{v.definition}</div>
-                <div style={{ border: "2px solid #000", padding: "2px 8px", borderRadius: 12, fontSize: 14, fontWeight: 700, background: "#F0F0F0" }}>
-                  Kiste {v.box}
-                </div>
+                <div style={{ flex: "2 1 180px", fontSize: 18, whiteSpace: "pre-wrap" }}>{v.definition}</div>
+                
+                {/* Einzelne Kisten-Auswahl je Vokabel */}
+                <select 
+                  value={v.box} 
+                  onChange={(e) => onSetBox(v.id, Number(e.target.value))}
+                  style={{ 
+                    border: "2px solid #000", padding: "4px 8px", borderRadius: 12, 
+                    fontSize: 14, fontWeight: 700, background: "#FFF", cursor: "pointer" 
+                  }}
+                  title="In andere Kiste verschieben"
+                >
+                  {[1, 2, 3, 4].map((n) => (
+                    <option key={n} value={n}>Kiste {n}</option>
+                  ))}
+                </select>
+
                 <button onClick={() => startEdit(v)} style={{ background: "none", border: "none", cursor: "pointer" }} title="Bearbeiten"><Pencil size={18} /></button>
                 <button onClick={() => onDeleteMany([v.id])} style={{ background: "none", border: "none", cursor: "pointer" }} title="Löschen"><Trash2 size={18} /></button>
               </div>
@@ -652,7 +716,6 @@
               <Button size="sm" variant="ghost" onClick={() => setSession(null)}>Stopp</Button>
             </div>
 
-            {/* Die Lernkarte */}
             <div style={{ 
               background: "#FFFFFF", border: "4px solid #000000", borderRadius: C.handRadius, 
               padding: 40, minHeight: 240, display: "flex", flexDirection: "column", 
@@ -667,10 +730,9 @@
               )}
             </div>
 
-            {/* Buttons */}
             <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 24 }}>
               {!session.revealed ? (
-                <Button variant="accent" size="lg" onClick={() => setSession((s) => ({ ...s, revealed: true }))}>Umsetzten / Umdrehen 🔄</Button>
+                <Button variant="accent" size="lg" onClick={() => setSession((s) => ({ ...s, revealed: true }))}>Umdrehen 🔄</Button>
               ) : (
                 <>
                   <Button variant="danger" size="lg" onClick={() => answer(false)}>Nochmal üben ❌</Button>
@@ -873,6 +935,7 @@
                     onUpdate={updateVocab}
                     onDeleteMany={deleteVocabMany}
                     onMoveMany={moveVocabMany}
+                    onSetBox={setVocabBox}
                   />
                 )}
               </>
