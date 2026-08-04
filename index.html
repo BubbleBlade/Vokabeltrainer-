@@ -1,790 +1,191 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vokabeltrainer</title>
-  
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
-
   <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background-color: #f7f7f7;
-      color: #000000;
-      font-family: 'Comic Neue', cursive, sans-serif;
-      font-size: 18px;
-    }
-    ::selection { background: #000000; color: #ffffff; }
-    input[type=checkbox] { accent-color: #000000; width: 20px; height: 20px; cursor: pointer; }
-    select, button, input, textarea { font-family: inherit; }
+    body { font-family: Arial, sans-serif; margin: 20px; padding: 0; background-color: #f4f4f9; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .btn { padding: 10px 15px; margin: 5px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .btn:hover { background-color: #0056b3; }
+    .hidden { display: none; }
+    
+    /* Styles für das Fehler-Modal (Pop-up) */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-content { background: white; padding: 25px; border-radius: 8px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .modal-content h3 { color: #d9534f; margin-top: 0; }
+    .modal-detail { margin: 10px 0; text-align: left; background: #f8f9fa; padding: 10px; border-radius: 4px; }
+    .wrong-text { color: #d9534f; font-weight: bold; }
+    .correct-text { color: #5cb85c; font-weight: bold; }
+
+    /* Tabelle für die Zusammenfassung am Ende */
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
   </style>
 </head>
 <body>
 
-  <div id="root"></div>
+<div class="container">
+  <h2>Vokabeltrainer</h2>
+  
+  <div id="mode-selection">
+    <button class="btn" onclick="startQuiz()">Quiz-Modus starten</button>
+  </div>
 
-  <script>
-    const e = React.createElement;
-    const { useState, useEffect, useRef, useMemo, forwardRef } = React;
+  <div id="quiz-area" class="hidden">
+    <h3 id="question-text"></h3>
+    <div id="options-container"></div>
+  </div>
 
-    if (!window.storage) {
-      window.storage = {
-        async get(key) {
-          const val = localStorage.getItem(key);
-          return val ? { value: val } : null;
-        },
-        async set(key, value) {
-          localStorage.setItem(key, value);
-        }
-      };
+  <div id="end-screen" class="hidden">
+    <h3>Lektion beendet!</h3>
+    <p id="final-score"></p>
+    
+    <div id="wrong-words-summary">
+      <h4>Falsch beantwortete Wörter:</h4>
+      <table id="summary-table">
+        <thead>
+          <tr>
+            <th>Vorgegebenes Wort</th>
+            <th>Deine falsche Wahl</th>
+            <th>Richtige Übersetzung</th>
+          </tr>
+        </thead>
+        <tbody id="summary-body"></tbody>
+      </table>
+    </div>
+    
+    <button class="btn" onclick="location.reload()">Neustart</button>
+  </div>
+</div>
+
+<div id="error-modal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <h3>Falsche Antwort!</h3>
+    <div class="modal-detail">
+      <p><strong>Vorgegeben:</strong> <span id="modal-given"></span></p>
+      <p><strong>Deine Wahl:</strong> <span id="modal-chosen" class="wrong-text"></span></p>
+      <p><strong>Richtig wäre gewesen:</strong> <span id="modal-correct" class="correct-text"></span></p>
+    </div>
+    <button class="btn" onclick="closeModal()">Weiter</button>
+  </div>
+</div>
+
+<script>
+  // Beispiel-Vokabeln
+  const vocabulary = [
+    { word: "Apple", translation: "Apfel" },
+    { word: "House", translation: "Haus" },
+    { word: "Dog", translation: "Hund" },
+    { word: "Book", translation: "Buch" }
+  ];
+
+  let currentIndex = 0;
+  let wrongAnswersList = [];
+  let onModalCloseCallback = null;
+
+  function startQuiz() {
+    document.getElementById('mode-selection').classList.add('hidden');
+    document.getElementById('quiz-area').classList.remove('hidden');
+    currentIndex = 0;
+    wrongAnswersList = [];
+    showNextQuestion();
+  }
+
+  function showNextQuestion() {
+    if (currentIndex >= vocabulary.length) {
+      endLesson();
+      return;
     }
 
-    const Icon = ({ name, size = 20, color = "#000000", style = {} }) => {
-      const ref = useRef(null);
-      useEffect(() => {
-        if (ref.current && window.lucide) {
-          ref.current.innerHTML = `<i data-lucide="${name}"></i>`;
-          window.lucide.createIcons({
-            attrs: { width: size, height: size, stroke: color, 'stroke-width': 2.5 },
-            nameAttr: 'data-lucide',
-            el: ref.current
-          });
-        }
-      }, [name, size, color]);
-      return e('span', { ref, style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', ...style } });
-    };
+    const currentItem = vocabulary[currentIndex];
+    document.getElementById('question-text').innerText = `Was heißt "${currentItem.word}"?`;
 
-    const Plus = (props) => e(Icon, { name: "plus", ...props });
-    const Trash2 = (props) => e(Icon, { name: "trash-2", ...props });
-    const BookOpen = (props) => e(Icon, { name: "book-open", ...props });
-    const Download = (props) => e(Icon, { name: "download", ...props });
-    const Upload = (props) => e(Icon, { name: "upload", ...props });
-    const Check = (props) => e(Icon, { name: "check", ...props });
-    const Layers = (props) => e(Icon, { name: "layers", ...props });
-    const Pencil = (props) => e(Icon, { name: "pencil", ...props });
-    const Search = (props) => e(Icon, { name: "search", ...props });
-    const Sparkles = (props) => e(Icon, { name: "sparkles", ...props });
-    const ListChecks = (props) => e(Icon, { name: "list-checks", ...props });
-    const Play = (props) => e(Icon, { name: "play", ...props });
-    const Settings = (props) => e(Icon, { name: "settings", ...props });
-    const X = (props) => e(Icon, { name: "x", ...props });
+    const optionsContainer = document.getElementById('options-container');
+    optionsContainer.innerHTML = '';
 
-    const C = {
-      handBorder: "3px solid #000000",
-      handRadius: "255px 15px 225px 15px/15px 225px 15px 255px",
-      handRadiusAlt: "18px 255px 14px 225px/225px 15px 255px 14px",
-      boxShadow: "3px 4px 0px #000000",
-    };
+    // Antworten mischen (richtige Antwort + Distraktoren)
+    let options = vocabulary.map(v => v.translation);
+    options = shuffleArray(options);
 
-    const BOX_LABELS = ["Neu / schwer", "Alle 3 Tage", "Wöchentlich", "Gelernt"];
-    const STORAGE_KEY = "vokabeltrainer-data-v1";
-
-    const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-    const shuffle = (arr) => {
-      const a = [...arr];
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-      }
-      return a;
-    };
-
-    function defaultData() {
-      const subjectId = uid();
-      const now = Date.now();
-      return {
-        subjects: [{ id: subjectId, name: "Englisch" }],
-        vocab: [
-          { id: uid(), subjectId, term: "the journey", definition: "die Reise", box: 1, createdAt: now },
-          { id: uid(), subjectId, term: "to achieve", definition: "erreichen", box: 2, createdAt: now },
-          { id: uid(), subjectId, term: "reliable", definition: "verlässlich", box: 3, createdAt: now },
-          { id: uid(), subjectId, term: "the weather", definition: "das Wetter", box: 4, createdAt: now },
-        ],
-        currentSubjectId: subjectId,
-      };
-    }
-
-    function downloadCSV(vocabList, filename = "vokabeln.csv") {
-      let csvContent = "\uFEFFWort;Bedeutung;Kiste\n";
-      vocabList.forEach((v) => {
-        const cleanTerm = `"${(v.term || "").replace(/"/g, '""')}"`;
-        const cleanDef = `"${(v.definition || "").replace(/"/g, '""')}"`;
-        csvContent += `${cleanTerm};${cleanDef};${v.box}\n`;
-      });
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    function parseImportText(text) {
-      const lines = text.split(/\r?\n/);
-      const items = [];
-      lines.forEach((line) => {
-        const trimmed = line.trim();
-        if (!trimmed) return;
-        
-        let delimiter = ';';
-        if (!trimmed.includes(';') && trimmed.includes('\t')) delimiter = '\t';
-        else if (!trimmed.includes(';') && trimmed.includes(',')) delimiter = ',';
-
-        const parts = trimmed.split(delimiter).map(p => p.trim().replace(/^"(.*)"$/, '$1').replace(/""/g, '"'));
-        
-        if (parts[0] && parts[0].toLowerCase() === "wort") return;
-
-        if (parts.length >= 2) {
-          const term = parts[0];
-          const definition = parts[1];
-          let box = 1;
-          if (parts[2] && !isNaN(parseInt(parts[2]))) {
-            box = Math.min(Math.max(parseInt(parts[2]), 1), 4);
-          }
-          if (term && definition) {
-            items.push({ term, definition, box });
-          }
-        }
-      });
-      return items;
-    }
-
-    function Button({ children, onClick, variant = "default", size = "md", disabled, style, title }) {
-      const base = {
-        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
-        borderRadius: C.handRadius, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer",
-        border: C.handBorder, transition: "transform .1s ease, box-shadow .1s ease",
-        whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere", maxWidth: "100%", opacity: disabled ? 0.45 : 1, boxShadow: C.boxShadow,
-        background: "#FFFFFF", color: "#000000", transform: "rotate(-1deg)", textAlign: "center",
-      };
-      const sizes = { 
-        sm: { padding: "6px 12px", fontSize: 15 }, 
-        md: { padding: "10px 18px", fontSize: 17 }, 
-        lg: { padding: "14px 24px", fontSize: 20 } 
-      };
-      const variants = {
-        default: { background: "#FFFFFF", color: "#000000" },
-        accent: { background: "#000000", color: "#FFFFFF" },
-        danger: { background: "#FFFFFF", color: "#000000", borderStyle: "dashed" },
-        ghost: { background: "transparent", border: "2px dashed #000000", boxShadow: "none" },
-        subtle: { background: "#F0F0F0", color: "#000000" },
-      };
-      return e('button', {
-        title, disabled, onClick,
-        style: { ...base, ...sizes[size], ...variants[variant], ...style },
-        onMouseEnter: (ev) => { if (!disabled) { ev.currentTarget.style.transform = "rotate(1deg) scale(1.02)"; ev.currentTarget.style.boxShadow = "5px 6px 0px #000000"; } },
-        onMouseLeave: (ev) => { if (!disabled) { ev.currentTarget.style.transform = "rotate(-1deg) scale(1)"; ev.currentTarget.style.boxShadow = C.boxShadow; } }
-      }, children);
-    }
-
-    const TextInput = forwardRef(function TextInput(props, ref) {
-      return e('input', {
-        ...props, ref,
-        style: { width: "100%", maxWidth: "100%", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: "10px 14px", color: "#000000", fontSize: 18, outline: "none", boxShadow: "2px 3px 0px #000", ...(props.style || {}) }
-      });
+    options.forEach(option => {
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.innerText = option;
+      btn.onclick = () => checkAnswer(currentItem.word, option, currentItem.translation);
+      optionsContainer.appendChild(btn);
     });
+  }
 
-    function TextArea(props) {
-      return e('textarea', {
-        ...props,
-        style: { width: "100%", maxWidth: "100%", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: "10px 14px", color: "#000000", fontSize: 18, outline: "none", resize: "vertical", fontFamily: "inherit", lineHeight: 1.4, boxShadow: "2px 3px 0px #000", ...(props.style || {}) }
+  function checkAnswer(givenWord, chosenAnswer, correctAnswer) {
+    if (chosenAnswer === correctAnswer) {
+      // Richtig beantwortet
+      currentIndex++;
+      showNextQuestion();
+    } else {
+      // Falsch beantwortet: In Fehler-Liste eintragen
+      wrongAnswersList.push({
+        given: givenWord,
+        chosen: chosenAnswer,
+        correct: correctAnswer
+      });
+
+      // Fehler-Modal anzeigen
+      showErrorModal(givenWord, chosenAnswer, correctAnswer, () => {
+        currentIndex++;
+        showNextQuestion();
       });
     }
+  }
 
-    function DrawerBox({ label, title, count, onClick, active, fullWidth }) {
-      return e('button', {
-        onClick,
-        style: {
-          textAlign: "left", cursor: "pointer", border: active ? "4px solid #000000" : "3px solid #000000",
-          background: active ? "#F0F0F0" : "#FFFFFF", borderRadius: C.handRadius, padding: 12,
-          width: fullWidth ? "100%" : "auto",
-          boxShadow: active ? "6px 8px 0px #000000" : C.boxShadow, transform: active ? "rotate(-1deg) scale(1.02)" : "rotate(0deg)",
-          display: "flex", flexDirection: "column", justifyContent: "space-between", color: "#000000"
-        }
-      },
-        e('div', { style: { fontSize: 13, fontWeight: 700, textTransform: "uppercase", textDecoration: "underline", color: "#000000" } }, label),
-        e('div', { style: { fontSize: 26, fontWeight: 700, margin: "4px 0", color: "#000000" } }, count),
-        title && e('div', { style: { fontSize: 12, color: "#000000" } }, title)
-      );
+  function showErrorModal(given, chosen, correct, onClose) {
+    document.getElementById('modal-given').innerText = given;
+    document.getElementById('modal-chosen').innerText = chosen;
+    document.getElementById('modal-correct').innerText = correct;
+    
+    onModalCloseCallback = onClose;
+    document.getElementById('error-modal').classList.remove('hidden');
+  }
+
+  function closeModal() {
+    document.getElementById('error-modal').classList.add('hidden');
+    if (onModalCloseCallback) {
+      onModalCloseCallback();
     }
+  }
 
-    function SettingsModal({ isOpen, onClose, subjects, onAddSubject, onDeleteSubject }) {
-      const [newSubjectName, setNewSubjectName] = useState("");
+  function endLesson() {
+    document.getElementById('quiz-area').classList.add('hidden');
+    document.getElementById('end-screen').classList.remove('hidden');
 
-      if (!isOpen) return null;
+    const total = vocabulary.length;
+    const errors = wrongAnswersList.length;
+    document.getElementById('final-score').innerText = `Du hast ${total - errors} von ${total} Wörtern richtig beantwortet.`;
 
-      function handleAdd() {
-        if (!newSubjectName.trim()) return;
-        onAddSubject(newSubjectName.trim());
-        setNewSubjectName("");
-      }
+    const summaryBody = document.getElementById('summary-body');
+    summaryBody.innerHTML = '';
 
-      return e('div', {
-        style: {
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center",
-          zIndex: 1000, padding: 16
-        }
-      },
-        e('div', {
-          style: {
-            background: "#FFFFFF", border: "4px solid #000000", borderRadius: C.handRadius,
-            padding: 24, maxWidth: 450, width: "100%", boxShadow: "8px 10px 0px #000000", position: "relative"
-          }
-        },
-          e('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
-            e('div', { style: { fontSize: 24, fontWeight: 700 } }, "Sprachen verwalten ⚙️"),
-            e('button', { onClick: onClose, style: { background: "none", border: "none", cursor: "pointer" } }, e(X, { size: 24 }))
-          ),
-          e('div', { style: { marginBottom: 20 } },
-            e('div', { style: { fontSize: 16, fontWeight: 700, marginBottom: 8 } }, "Neue Sprache / neues Fach:"),
-            e('div', { style: { display: "flex", gap: 8 } },
-              e(TextInput, { placeholder: "z. B. Französisch", value: newSubjectName, onChange: (ev) => setNewSubjectName(ev.target.value) }),
-              e(Button, { variant: "accent", onClick: handleAdd }, e(Plus, { size: 18, color: "#FFF" }))
-            )
-          ),
-          e('div', { style: { fontSize: 16, fontWeight: 700, marginBottom: 8 } }, "Vorhandene Sprachen:"),
-          e('div', { style: { display: "flex", flexDirection: "column", gap: 8, maxHeight: 200, overflowY: "auto" } },
-            subjects.map(s => e('div', {
-              key: s.id,
-              style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", border: "2px solid #000", borderRadius: 12, background: "#F9F9F9" }
-            },
-              e('span', { style: { fontWeight: 700 } }, s.name),
-              subjects.length > 1 && e('button', {
-                onClick: () => {
-                  if (confirm(`Möchtest du „${s.name}“ wirklich löschen? Alle zugehörigen Vokabeln werden ebenfalls gelöscht.`)) {
-                    onDeleteSubject(s.id);
-                  }
-                },
-                style: { background: "none", border: "none", cursor: "pointer" }
-              }, e(Trash2, { size: 18, color: "#000" }))
-            ))
-          )
-        )
-      );
+    if (wrongAnswersList.length === 0) {
+      document.getElementById('wrong-words-summary').innerHTML = '<p class="correct-text">Perfekt! Du hast keine Fehler gemacht!</p>';
+    } else {
+      wrongAnswersList.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.given}</td>
+          <td class="wrong-text">${item.chosen}</td>
+          <td class="correct-text">${item.correct}</td>
+        `;
+        summaryBody.appendChild(row);
+      });
     }
+  }
 
-    /* Modal für Import (CSV / Zwischenablage) */
-    function ImportModal({ isOpen, onClose, onImport }) {
-      const [rawText, setRawText] = useState("");
-      const fileInputRef = useRef(null);
+  function shuffleArray(array) {
+    return array.sort(() => Math.random() - 0.5);
+  }
+</script>
 
-      if (!isOpen) return null;
-
-      function handleFileChange(ev) {
-        const file = ev.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setRawText(e.target.result);
-        };
-        reader.readAsText(file);
-      }
-
-      function handleDoImport() {
-        const items = parseImportText(rawText);
-        if (items.length === 0) {
-          alert("Keine gültigen Vokabeln gefunden. Format: Wort;Bedeutung (zeilenweise)");
-          return;
-        }
-        onImport(items);
-        setRawText("");
-        onClose();
-      }
-
-      return e('div', {
-        style: {
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center",
-          zIndex: 1000, padding: 16
-        }
-      },
-        e('div', {
-          style: {
-            background: "#FFFFFF", border: "4px solid #000000", borderRadius: C.handRadius,
-            padding: 24, maxWidth: 520, width: "100%", boxShadow: "8px 10px 0px #000000", position: "relative"
-          }
-        },
-          e('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 } },
-            e('div', { style: { fontSize: 24, fontWeight: 700 } }, "Vokabeln importieren 📥"),
-            e('button', { onClick: onClose, style: { background: "none", border: "none", cursor: "pointer" } }, e(X, { size: 24 }))
-          ),
-          e('div', { style: { fontSize: 15, marginBottom: 12, lineHeight: 1.4 } },
-            "Lade eine CSV-Datei hoch oder füge Text aus der Zwischenablage ein. Format pro Zeile: ",
-            e('strong', null, "Wort;Bedeutung"), " (oder getrennt durch Tab / Komma)."
-          ),
-          e('div', { style: { marginBottom: 14 } },
-            e('input', { type: "file", accept: ".csv,.txt", ref: fileInputRef, onChange: handleFileChange, style: { display: "none" } }),
-            e(Button, { size: "sm", variant: "subtle", onClick: () => fileInputRef.current && fileInputRef.current.click() }, e(Upload, { size: 16 }), " CSV-Datei auswählen")
-          ),
-          e(TextArea, {
-            placeholder: "oder hier Einfügen:\napple;Apfel\nbanana;Banane",
-            rows: 6,
-            value: rawText,
-            onChange: (ev) => setRawText(ev.target.value)
-          }),
-          e('div', { style: { display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 } },
-            e(Button, { variant: "ghost", onClick: onClose }, "Abbrechen"),
-            e(Button, { variant: "accent", onClick: handleDoImport }, e(Check, { size: 18, color: "#FFF" }), " Importieren")
-          )
-        )
-      );
-    }
-
-    function ListView({ vocab, subjectName, onAdd, onBatchAdd, onUpdate, onDeleteMany, onMoveMany, onSetBox }) {
-      const [term, setTerm] = useState("");
-      const [definition, setDefinition] = useState("");
-      const [editId, setEditId] = useState(null);
-      const [selected, setSelected] = useState(new Set());
-      const [search, setSearch] = useState("");
-      const [boxFilter, setBoxFilter] = useState("all");
-      const [isImportOpen, setIsImportOpen] = useState(false);
-
-      const filtered = useMemo(() => {
-        return vocab.filter((v) => {
-          if (boxFilter !== "all" && v.box !== Number(boxFilter)) return false;
-          if (search && !(v.term.toLowerCase().includes(search.toLowerCase()) || v.definition.toLowerCase().includes(search.toLowerCase()))) return false;
-          return true;
-        });
-      }, [vocab, search, boxFilter]);
-
-      function toggle(id) { setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
-      function toggleAll() { setSelected(selected.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map((v) => v.id))); }
-
-      function submit() {
-        if (!term.trim()) return;
-        if (editId) { onUpdate(editId, term.trim(), definition.trim()); setEditId(null); }
-        else { onAdd(term.trim(), definition.trim()); }
-        setTerm(""); setDefinition("");
-      }
-
-      return e('div', { style: { maxWidth: "100%" } },
-        e('div', { style: { background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: 20, marginBottom: 24, boxShadow: C.boxShadow } },
-          e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 12 } }, editId ? "✏️ Vokabel ändern" : `➕ Neue Vokabel für „${subjectName}“`),
-          e('div', { style: { display: "flex", flexDirection: "column", gap: 12 } },
-            e(TextInput, { placeholder: "Wort (z. B. dog)", value: term, onChange: (ev) => setTerm(ev.target.value) }),
-            e(TextArea, { placeholder: "Bedeutung (z. B. Hund)", rows: 2, value: definition, onChange: (ev) => setDefinition(ev.target.value) }),
-            e('div', { style: { display: "flex", gap: 10 } },
-              e(Button, { variant: "accent", onClick: submit }, editId ? [e(Check, { key: 1, size: 18, color: "#FFF" }), " Speichern"] : [e(Plus, { key: 1, size: 18, color: "#FFF" }), " Einpacken"]),
-              editId && e(Button, { variant: "ghost", onClick: () => { setEditId(null); setTerm(""); setDefinition(""); } }, "Abbrechen")
-            )
-          )
-        ),
-        e('div', { style: { display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 16 } },
-          e('div', { style: { position: "relative", flex: "1 1 200px" } },
-            e(Search, { size: 18, style: { position: "absolute", left: 12, top: 12 } }),
-            e(TextInput, { placeholder: "Suchen...", value: search, onChange: (ev) => setSearch(ev.target.value), style: { paddingLeft: 38 } })
-          ),
-          e('select', {
-            value: boxFilter, onChange: (ev) => setBoxFilter(ev.target.value),
-            style: { background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: "10px 14px", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "2px 3px 0px #000" }
-          }, e('option', { value: "all" }, "Alle Kisten"), [1,2,3,4].map(n => e('option', { key: n, value: n }, `Kiste ${n}`))),
-          e(Button, { size: "sm", variant: "subtle", onClick: () => setIsImportOpen(true) }, e(Upload, { size: 16 }), " Importieren"),
-          e(Button, { size: "sm", variant: "subtle", onClick: () => downloadCSV(selected.size > 0 ? vocab.filter(v => selected.has(v.id)) : vocab, `vokabeln.csv`) }, e(Download, { size: 16 }), " Exportieren")
-        ),
-        e('div', { style: { display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between", background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, padding: "10px 14px", marginBottom: 14 } },
-          e('label', { style: { display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: 700 } },
-            e('input', { type: "checkbox", checked: filtered.length > 0 && selected.size === filtered.length, onChange: toggleAll }),
-            `Alle markieren (${filtered.length})`
-          ),
-          selected.size > 0 && e('div', { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
-            e('span', { style: { fontWeight: 700, fontSize: 15 } }, "Verschieben:"),
-            [1,2,3,4].map(n => e(Button, { key: n, size: "sm", onClick: () => { onMoveMany([...selected], n); setSelected(new Set()); } }, `Kist ${n}`)),
-            e(Button, { size: "sm", variant: "danger", onClick: () => { onDeleteMany([...selected]); setSelected(new Set()); } }, e(Trash2, { size: 16 }))
-          )
-        ),
-        e('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
-          filtered.map(v => e('div', {
-            key: v.id,
-            style: { display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: selected.has(v.id) ? "#F0F0F0" : "#FFFFFF", border: C.handBorder, borderRadius: C.handRadiusAlt, boxShadow: "2px 3px 0px #000", wordBreak: "break-word", overflowWrap: "anywhere" }
-          },
-            e('input', { type: "checkbox", checked: selected.has(v.id), onChange: () => toggle(v.id) }),
-            e('div', { style: { flex: "1 1 120px", fontWeight: 700, fontSize: 19, wordBreak: "break-word" } }, v.term),
-            e('div', { style: { flex: "2 1 150px", fontSize: 18, wordBreak: "break-word" } }, v.definition),
-            e('select', { value: v.box, onChange: (ev) => onSetBox(v.id, Number(ev.target.value)), style: { border: "2px solid #000", padding: "4px 8px", borderRadius: 12, fontWeight: 700 } },
-              [1,2,3,4].map(n => e('option', { key: n, value: n }, `Kiste ${n}`))
-            ),
-            e('button', { onClick: () => { setEditId(v.id); setTerm(v.term); setDefinition(v.definition); }, style: { background: "none", border: "none", cursor: "pointer" } }, e(Pencil, { size: 18 })),
-            e('button', { onClick: () => onDeleteMany([v.id]), style: { background: "none", border: "none", cursor: "pointer" } }, e(Trash2, { size: 18 }))
-          ))
-        ),
-
-        e(ImportModal, {
-          isOpen: isImportOpen,
-          onClose: () => setIsImportOpen(false),
-          onImport: onBatchAdd
-        })
-      );
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* Lernen                                                             */
-    /* ------------------------------------------------------------------ */
-    function LearnView({ vocab, onSetBox }) {
-      const counts = [1, 2, 3, 4].map((n) => vocab.filter((v) => v.box === n).length);
-      const [selectedBox, setSelectedBox] = useState("all"); 
-      const [countChoice, setCountChoice] = useState("all");
-      const [mode, setMode] = useState("direct");
-      const [session, setSession] = useState(null);
-
-      function startSession() {
-        if (!vocab || vocab.length === 0) return;
-
-        let pool = [];
-        if (selectedBox === "all") {
-          pool = shuffle(vocab);
-        } else {
-          pool = shuffle(vocab.filter((v) => v.box === Number(selectedBox)));
-        }
-
-        if (pool.length === 0) {
-          pool = shuffle(vocab);
-        }
-
-        let finalCards = [];
-        if (countChoice === "all") {
-          finalCards = pool;
-        } else {
-          const target = parseInt(countChoice, 10);
-          if (pool.length >= target) {
-            finalCards = pool.slice(0, target);
-          } else {
-            const extra = shuffle(vocab.filter((v) => !pool.some(p => p.id === v.id)));
-            finalCards = [...pool, ...extra.slice(0, target - pool.length)];
-          }
-        }
-
-        if (finalCards.length === 0) return;
-
-        const initialActive = finalCards.slice(0, 3);
-        const initialRemaining = finalCards.slice(3);
-
-        setSession({
-          mode,
-          queue: finalCards,
-          index: 0,
-          revealed: false,
-          correct: 0,
-          wrong: 0,
-          activePairs: initialActive,
-          remainingPairs: initialRemaining,
-          leftItems: shuffle(initialActive.map(c => ({ id: c.id, text: c.term }))),
-          rightItems: shuffle(initialActive.map(c => ({ id: c.id, text: c.definition }))),
-          selectedLeft: null,
-          solvedCount: 0,
-        });
-      }
-
-      function answer(know) {
-        const card = session.queue[session.index];
-        onSetBox(card.id, know ? Math.min(card.box + 1, 4) : 1);
-        setSession((s) => ({
-          ...s, revealed: false, index: s.index + 1,
-          correct: s.correct + (know ? 1 : 0), wrong: s.wrong + (know ? 0 : 1),
-        }));
-      }
-
-      const currentQuizOptions = useMemo(() => {
-        if (!session || session.mode !== "quiz" || session.index >= session.queue.length) return [];
-        const card = session.queue[session.index];
-        const otherDefs = vocab.filter(v => v.id !== card.id).map(v => v.definition);
-        const distractors = shuffle(otherDefs).slice(0, 3);
-        
-        while (distractors.length < 3) {
-          distractors.push("—");
-        }
-        return shuffle([card.definition, ...distractors]);
-      }, [session?.index, session?.mode]);
-
-      function handlePairClick(type, item) {
-        if (type === "left") {
-          setSession(s => ({ ...s, selectedLeft: item }));
-        } else if (type === "right" && session.selectedLeft) {
-          const matchedId = session.selectedLeft.id;
-          
-          if (matchedId === item.id) {
-            onSetBox(matchedId, Math.min((vocab.find(v => v.id === matchedId)?.box || 1) + 1, 4));
-            
-            setSession(s => {
-              const nextSolvedCount = s.solvedCount + 1;
-              const nextCorrect = s.correct + 1;
-              
-              let newLeft = s.leftItems.filter(l => l.id !== matchedId);
-              let newRight = s.rightItems.filter(r => r.id !== matchedId);
-
-              let newRemaining = [...s.remainingPairs];
-              if (newRemaining.length > 0) {
-                const nextItem = newRemaining.shift();
-                newLeft = shuffle([...newLeft, { id: nextItem.id, text: nextItem.term }]);
-                newRight = shuffle([...newRight, { id: nextItem.id, text: nextItem.definition }]);
-              }
-
-              return {
-                ...s,
-                correct: nextCorrect,
-                solvedCount: nextSolvedCount,
-                leftItems: newLeft,
-                rightItems: newRight,
-                remainingPairs: newRemaining,
-                selectedLeft: null,
-              };
-            });
-          } else {
-            onSetBox(session.selectedLeft.id, 1);
-            setSession(s => ({ ...s, wrong: s.wrong + 1, selectedLeft: null }));
-          }
-        }
-      }
-
-      if (session) {
-        const isPairsFinished = session.mode === "pairs" && session.solvedCount >= session.queue.length;
-        const isNormalFinished = session.mode !== "pairs" && session.index >= session.queue.length;
-
-        if (isPairsFinished || isNormalFinished) {
-          return e('div', { style: { maxWidth: 440, margin: "40px auto", textAlign: "center", background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: 30, boxShadow: C.boxShadow } },
-            e(Sparkles, { size: 48, style: { marginBottom: 12 } }),
-            e('div', { style: { fontSize: 28, fontWeight: 700 } }, "Klasse gemacht! 🎉"),
-            e('div', { style: { fontSize: 20, marginTop: 10 } }, `${session.correct} richtig · ${session.wrong} falsch`),
-            e(Button, { variant: "accent", style: { marginTop: 24 }, onClick: () => setSession(null) }, "Weiter üben")
-          );
-        }
-
-        const card = session.queue[session.index];
-
-        return e('div', { style: { maxWidth: 580, margin: "0 auto", width: "100%" } },
-          e('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 } },
-            e('span', { style: { fontSize: 16, fontWeight: 700 } }, 
-              session.mode === "pairs" ? `Gelöst: ${session.solvedCount} von ${session.queue.length}` : `Karte ${session.index + 1} von ${session.queue.length}`
-            ),
-            e(Button, { size: "sm", variant: "ghost", onClick: () => setSession(null) }, "Stopp")
-          ),
-
-          (session.mode === "direct" || session.mode === "reverse") && e('div', null,
-            e('div', {
-              style: {
-                background: "#FFFFFF", border: "4px solid #000000", borderRadius: C.handRadius,
-                padding: 24, minHeight: 200, display: "flex", flexDirection: "column",
-                alignItems: "center", justifyContent: "center", textAlign: "center",
-                boxShadow: "6px 8px 0px #000000", wordBreak: "break-word", overflowWrap: "anywhere", maxWidth: "100%"
-              }
-            },
-              e('div', { style: { fontSize: 30, fontWeight: 700, wordBreak: "break-word", overflowWrap: "anywhere", width: "100%" } }, session.mode === "direct" ? card.term : card.definition),
-              session.revealed && e('div', { style: { marginTop: 20, paddingTop: 20, borderTop: "3px dashed #000", fontSize: 24, width: "100%", wordBreak: "break-word", overflowWrap: "anywhere" } },
-                session.mode === "direct" ? card.definition : card.term
-              )
-            ),
-            e('div', { style: { display: "flex", justifyContent: "center", gap: 14, marginTop: 20, flexWrap: "wrap" } },
-              !session.revealed ? e(Button, { variant: "accent", size: "lg", onClick: () => setSession(s => ({ ...s, revealed: true })) }, "Umdrehen 🔄")
-              : [
-                e(Button, { key: 1, variant: "danger", size: "lg", onClick: () => answer(false) }, "Nochmal ❌"),
-                e(Button, { key: 2, variant: "accent", size: "lg", onClick: () => answer(true) }, "Gewusst! ✔️")
-              ]
-            )
-          ),
-
-          session.mode === "quiz" && e('div', null,
-            e('div', { style: { background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: 20, textAlign: "center", marginBottom: 20, boxShadow: C.boxShadow, wordBreak: "break-word", overflowWrap: "anywhere" } },
-              e('div', { style: { fontSize: 16, color: "#000000" } }, "Wie lautet die richtige Übersetzung?"),
-              e('div', { style: { fontSize: 28, fontWeight: 700, marginTop: 6, wordBreak: "break-word", overflowWrap: "anywhere" } }, card.term)
-            ),
-            e('div', { style: { display: "flex", flexDirection: "column", gap: 12, width: "100%" } },
-              currentQuizOptions.map((opt, idx) => e(Button, {
-                key: idx, variant: "default", size: "md",
-                style: { width: "100%", wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" },
-                onClick: () => {
-                  const isCorrect = opt === card.definition;
-                  answer(isCorrect);
-                }
-              }, opt))
-            )
-          ),
-
-          session.mode === "pairs" && e('div', { style: { width: "100%" } },
-            e('div', { style: { textAlign: "center", fontWeight: 700, marginBottom: 16 } }, "Erst ein Wort oben anklicken, dann unten die Übersetzung wählen:"),
-            
-            e('div', { style: { marginBottom: 24 } },
-              e('div', { style: { fontSize: 14, fontWeight: 700, textTransform: "uppercase", marginBottom: 8, color: "#000000" } }, "Ausgangssprache:"),
-              e('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
-                session.leftItems.map(item => {
-                  const isSelected = session.selectedLeft?.id === item.id;
-                  return e(Button, {
-                    key: item.id,
-                    variant: isSelected ? "accent" : "default",
-                    style: { width: "100%", wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" },
-                    onClick: () => handlePairClick("left", item)
-                  }, item.text);
-                })
-              )
-            ),
-
-            e('div', null,
-              e('div', { style: { fontSize: 14, fontWeight: 700, textTransform: "uppercase", marginBottom: 8, color: "#000000" } }, "Zielsprache:"),
-              e('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
-                session.rightItems.map(item => {
-                  return e(Button, {
-                    key: item.id,
-                    variant: "default",
-                    style: { width: "100%", wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" },
-                    onClick: () => handlePairClick("right", item)
-                  }, item.text);
-                })
-              )
-            )
-          )
-        );
-      }
-
-      return e('div', null,
-        e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 14 } }, "1. Wähle eine Kiste aus:"),
-        
-        e('div', { style: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 } },
-          e('div', { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 } },
-            counts.map((c, i) => e(DrawerBox, { key: i, label: `Kiste ${i+1}`, title: BOX_LABELS[i], count: c, active: selectedBox === i + 1, onClick: () => setSelectedBox(i + 1) }))
-          ),
-          e(DrawerBox, { label: "Alle Kisten", title: "Gesamtpool aller Vokabeln", count: vocab.length, active: selectedBox === "all", onClick: () => setSelectedBox("all"), fullWidth: true })
-        ),
-
-        e('div', { style: { background: "#FFFFFF", border: C.handBorder, borderRadius: C.handRadius, padding: 24, maxWidth: 560, margin: "0 auto", boxShadow: C.boxShadow } },
-          
-          e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 10 } }, "2. Lernmodus auswählen:"),
-          e('div', { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 } },
-            e(Button, { size: "sm", variant: mode === "direct" ? "accent" : "default", onClick: () => setMode("direct") }, "Ausgangs ➔ Ziel"),
-            e(Button, { size: "sm", variant: mode === "reverse" ? "accent" : "default", onClick: () => setMode("reverse") }, "Ziel ➔ Ausgangs"),
-            e(Button, { size: "sm", variant: mode === "quiz" ? "accent" : "default", onClick: () => setMode("quiz") }, "🎯 Ratemodus (Quiz)"),
-            e(Button, { size: "sm", variant: mode === "pairs" ? "accent" : "default", onClick: () => setMode("pairs") }, "🧩 Wortpaare")
-          ),
-
-          e('div', { style: { fontSize: 20, fontWeight: 700, marginBottom: 10 } }, "3. Wie viele Wörter?"),
-          e('div', { style: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 24 } },
-            ["5", "10", "20", "all"].map(val => e(Button, {
-              key: val, size: "sm", variant: countChoice === val ? "accent" : "default", onClick: () => setCountChoice(val)
-            }, val === "all" ? "Alle Wörter" : `${val} Wörter`))
-          ),
-
-          e(Button, { variant: "accent", size: "lg", disabled: vocab.length === 0, onClick: startSession, style: { width: "100%" } },
-            e(Play, { size: 22, color: "#FFF" }), " Jetzt Starten!"
-          )
-        )
-      );
-    }
-
-    function App() {
-      const [data, setData] = useState(null);
-      const [tab, setTab] = useState("learn");
-      const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
-      useEffect(() => {
-        (async () => {
-          try {
-            const res = await window.storage.get(STORAGE_KEY);
-            setData(res && res.value ? JSON.parse(res.value) : defaultData());
-          } catch { setData(defaultData()); }
-        })();
-      }, []);
-
-      useEffect(() => {
-        if (!data) return;
-        const t = setTimeout(() => { window.storage.set(STORAGE_KEY, JSON.stringify(data)); }, 300);
-        return () => clearTimeout(t);
-      }, [data]);
-
-      if (!data) return e('div', { style: { padding: 40, textAlign: "center", fontWeight: 700 } }, "Wird geladen... ✏️");
-
-      const currentSubject = data.subjects.find((s) => s.id === data.currentSubjectId) || data.subjects[0];
-      const vocab = data.vocab.filter((v) => v.subjectId === currentSubject?.id);
-
-      function handleAddSubject(name) {
-        const newId = uid();
-        setData(d => ({
-          ...d,
-          subjects: [...d.subjects, { id: newId, name }],
-          currentSubjectId: newId
-        }));
-      }
-
-      function handleDeleteSubject(subjectId) {
-        setData(d => {
-          const newSubjects = d.subjects.filter(s => s.id !== subjectId);
-          const newVocab = d.vocab.filter(v => v.subjectId !== subjectId);
-          const nextSubjectId = d.currentSubjectId === subjectId ? newSubjects[0]?.id : d.currentSubjectId;
-          return {
-            ...d,
-            subjects: newSubjects,
-            vocab: newVocab,
-            currentSubjectId: nextSubjectId
-          };
-        });
-      }
-
-      function handleBatchAdd(newItems) {
-        const now = Date.now();
-        const formatted = newItems.map(item => ({
-          id: uid(),
-          subjectId: currentSubject.id,
-          term: item.term,
-          definition: item.definition,
-          box: item.box || 1,
-          createdAt: now
-        }));
-
-        setData(d => ({
-          ...d,
-          vocab: [...d.vocab, ...formatted]
-        }));
-      }
-
-      return e('div', { style: { minHeight: "100vh", background: "#FFFFFF", padding: "20px 14px 60px", overflowX: "hidden" } },
-        e('div', { style: { maxWidth: 840, margin: "0 auto", width: "100%" } },
-          e('div', { style: { display: "flex", gap: 14, alignItems: "center", justifyContent: "space-between", marginBottom: 24, borderBottom: "3px solid #000", paddingBottom: 16, flexWrap: "wrap" } },
-            e('div', { style: { display: "flex", alignItems: "center", gap: 12 } },
-              e('div', { style: { background: "#000", color: "#FFF", padding: 8, borderRadius: C.handRadius } }, e(BookOpen, { size: 28, color: "#FFF" })),
-              e('div', { style: { fontSize: 30, fontWeight: 700 } }, "Mein Vokabelheft")
-            ),
-            e('div', { style: { display: "flex", alignItems: "center", gap: 8 } },
-              e('select', {
-                value: currentSubject?.id || "", onChange: (ev) => setData(d => ({ ...d, currentSubjectId: ev.target.value })),
-                style: { background: "#FFF", border: C.handBorder, borderRadius: C.handRadius, padding: "8px 16px", fontSize: 18, fontWeight: 700 }
-              }, data.subjects.map(s => e('option', { key: s.id, value: s.id }, s.name))),
-              e(Button, { size: "sm", variant: "subtle", onClick: () => setIsSettingsOpen(true), title: "Sprachen verwalten" }, e(Settings, { size: 20 }))
-            )
-          ),
-          e('div', { style: { display: "flex", gap: 10, marginBottom: 28 } },
-            e(Button, { variant: tab === "learn" ? "accent" : "default", onClick: () => setTab("learn"), style: { flex: 1 } }, e(Layers, { size: 20 }), " Lernen"),
-            e(Button, { variant: tab === "list" ? "accent" : "default", onClick: () => setTab("list"), style: { flex: 1 } }, e(ListChecks, { size: 20 }), " Vokabel-Liste")
-          ),
-          tab === "learn" && e(LearnView, { vocab, onSetBox: (id, box) => setData(d => ({ ...d, vocab: d.vocab.map(v => v.id === id ? { ...v, box } : v) })) }),
-          tab === "list" && e(ListView, {
-            vocab, subjectName: currentSubject?.name || "",
-            onAdd: (term, definition) => setData(d => ({ ...d, vocab: [...d.vocab, { id: uid(), subjectId: currentSubject.id, term, definition, box: 1, createdAt: Date.now() }] })),
-            onBatchAdd: handleBatchAdd,
-            onUpdate: (id, term, definition) => setData(d => ({ ...d, vocab: d.vocab.map(v => v.id === id ? { ...v, term, definition } : v) })),
-            onDeleteMany: (ids) => setData(d => ({ ...d, vocab: d.vocab.filter(v => !ids.includes(v.id)) })),
-            onMoveMany: (ids, box) => setData(d => ({ ...d, vocab: d.vocab.map(v => ids.includes(v.id) ? { ...v, box } : v) })),
-            onSetBox: (id, box) => setData(d => ({ ...d, vocab: d.vocab.map(v => v.id === id ? { ...v, box } : v) }))
-          }),
-
-          e(SettingsModal, {
-            isOpen: isSettingsOpen,
-            onClose: () => setIsSettingsOpen(false),
-            subjects: data.subjects,
-            onAddSubject: handleAddSubject,
-            onDeleteSubject: handleDeleteSubject
-          })
-        )
-      );
-    }
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(e(App));
-  </script>
 </body>
 </html>
